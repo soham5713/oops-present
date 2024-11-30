@@ -30,19 +30,21 @@ function SubjectSetup() {
       setError("Please add at least one subject.");
       return;
     }
-
+  
     const user = auth.currentUser;
     if (user) {
       const db = getFirestore();
       const userRef = doc(db, "users", user.uid);
-
+  
       try {
         await setDoc(userRef, {
           subjects: subjects.reduce((acc, subject) => {
             acc[subject] = { theory: "", lab: "" };
             return acc;
           }, {}),
-        });
+          setupCompleted: true, // Add this field to indicate that the setup is completed
+        }, { merge: true }); // Use merge to avoid overwriting other fields if they exist
+  
         setSuccess("Subjects have been saved successfully!");
         setError("");
       } catch (error) {
@@ -51,6 +53,7 @@ function SubjectSetup() {
       }
     }
   };
+  
 
   const handleClearAll = () => {
     setSubjects([]);
