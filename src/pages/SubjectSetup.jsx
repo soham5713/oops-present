@@ -60,8 +60,8 @@ function SubjectSetup() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-[90vh]">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+    <div className="flex justify-center items-center min-h-[66vh] md:min-h-[90vh]">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-[75%] md:max-w-md">
         <h1 className="text-3xl font-semibold mb-4 text-center text-gray-800">Subject Setup</h1>
 
         {error && (
@@ -105,16 +105,16 @@ function SubjectSetup() {
           </div>
         )}
 
-        <div className="flex justify-between mb-6 gap-5">
+        <div className="flex justify-between mb-6 gap-0 md:gap-4 flex-wrap">
           <button
             onClick={handleClearAll}
-            className="w-1/2 p-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-200"
+            className="w-full p-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-200 mb-4 sm:mb-0"
           >
             Clear All
           </button>
           <button
             onClick={handleSubmit}
-            className="w-1/2 p-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-200"
+            className="w-full p-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-200"
           >
             Save Subjects
           </button>
