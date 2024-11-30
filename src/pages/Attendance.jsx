@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "../firebase";
 import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 
 function AttendancePage() {
   const [subjects, setSubjects] = useState([]);
   const [attendanceData, setAttendanceData] = useState({});
   const [date, setDate] = useState("");
   const [isLoaded, setIsLoaded] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchSubjects = async () => {
@@ -53,6 +55,9 @@ function AttendancePage() {
 
         await updateDoc(docRef, { attendance: updatedAttendance });
         alert("Attendance saved successfully!");
+
+        // Redirect to the dashboard
+        navigate("/dashboard");
       } catch (error) {
         console.error("Error saving attendance:", error);
       }
@@ -68,9 +73,9 @@ function AttendancePage() {
   }
 
   return (
-    <div className="flex justify-center items-center min-h-[90vh]">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-3xl mt-5 mb-5">
-        <h1 className="text-3xl font-semibold text-center text-gray-800 mb-8">
+    <div className="flex justify-center items-center min-h-[90vh] p-4">
+      <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-3xl mt-5 mb-5">
+        <h1 className="text-2xl md:text-3xl font-semibold text-center text-gray-800 mb-6">
           Attendance Tracker
         </h1>
 
@@ -89,22 +94,30 @@ function AttendancePage() {
 
         {subjects.map((subject) => (
           <div key={subject} className="mb-6">
-            <h3 className="text-xl font-medium text-gray-700 mb-4">{subject}</h3>
+            <h3 className="text-lg md:text-xl font-medium text-gray-700 mb-4">{subject}</h3>
 
-            <div className="flex space-x-6 mb-6">
+            <div className="flex flex-col md:flex-row md:space-x-6 mb-6">
               {/* Theory Section */}
-              <div className="w-1/2">
+              <div className="w-full md:w-1/2 mb-4 md:mb-0">
                 <h4 className="text-lg text-gray-700 mb-2">Theory</h4>
                 <div className="flex space-x-4">
                   <button
                     onClick={() => handleAttendanceChange(subject, "theory", "Present")}
-                    className={`w-32 py-2 rounded-lg text-white ${attendanceData[subject]?.theory === "Present" ? "bg-green-500" : "bg-gray-300"}`}
+                    className={`w-full md:w-32 py-2 rounded-lg text-white ${
+                      attendanceData[subject]?.theory === "Present"
+                        ? "bg-green-500"
+                        : "bg-gray-300"
+                    }`}
                   >
                     Present
                   </button>
                   <button
                     onClick={() => handleAttendanceChange(subject, "theory", "Absent")}
-                    className={`w-32 py-2 rounded-lg text-white ${attendanceData[subject]?.theory === "Absent" ? "bg-red-500" : "bg-gray-300"}`}
+                    className={`w-full md:w-32 py-2 rounded-lg text-white ${
+                      attendanceData[subject]?.theory === "Absent"
+                        ? "bg-red-500"
+                        : "bg-gray-300"
+                    }`}
                   >
                     Absent
                   </button>
@@ -112,18 +125,26 @@ function AttendancePage() {
               </div>
 
               {/* Lab Section */}
-              <div className="w-1/2">
+              <div className="w-full md:w-1/2">
                 <h4 className="text-lg text-gray-700 mb-2">Lab</h4>
                 <div className="flex space-x-4">
                   <button
                     onClick={() => handleAttendanceChange(subject, "lab", "Present")}
-                    className={`w-32 py-2 rounded-lg text-white ${attendanceData[subject]?.lab === "Present" ? "bg-green-500" : "bg-gray-300"}`}
+                    className={`w-full md:w-32 py-2 rounded-lg text-white ${
+                      attendanceData[subject]?.lab === "Present"
+                        ? "bg-green-500"
+                        : "bg-gray-300"
+                    }`}
                   >
                     Present
                   </button>
                   <button
                     onClick={() => handleAttendanceChange(subject, "lab", "Absent")}
-                    className={`w-32 py-2 rounded-lg text-white ${attendanceData[subject]?.lab === "Absent" ? "bg-red-500" : "bg-gray-300"}`}
+                    className={`w-full md:w-32 py-2 rounded-lg text-white ${
+                      attendanceData[subject]?.lab === "Absent"
+                        ? "bg-red-500"
+                    : "bg-gray-300"
+                    }`}
                   >
                     Absent
                   </button>

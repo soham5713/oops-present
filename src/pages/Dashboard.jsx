@@ -124,12 +124,13 @@ function Dashboard() {
   }
 
   return (
-    <div className="flex justify-center items-center min-h-[90vh]"> {/* Adjust for fixed Navbar */}
-      <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row space-y-8 sm:space-y-0 sm:space-x-8 justify-center">
+    <div className="flex justify-center items-center min-h-[90vh] p-4"> {/* Adjust for fixed Navbar */}
+      <div className="w-full max-w-5xl space-y-8">
+        {/* Charts container */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Pie chart for total attendance percentage */}
-          <div className="bg-white p-8 rounded-xl shadow-lg flex-1 max-w-md mx-auto">
-            <h1 className="text-3xl font-semibold mb-6 text-center text-gray-800">Total Attendance</h1>
+          <div className="bg-white p-8 rounded-xl shadow-lg">
+            <h1 className="text-2xl font-semibold mb-6 text-center text-gray-800">Total Attendance</h1>
             <Pie
               data={renderPieChartData()}
               options={{
@@ -142,7 +143,7 @@ function Dashboard() {
                   },
                   legend: {
                     labels: {
-                      font: { size: 18, weight: "bold" },
+                      font: { size: 14, weight: "bold" },
                       color: "#4B5563",
                     },
                   },
@@ -151,9 +152,9 @@ function Dashboard() {
             />
           </div>
 
-          {/* Double bar graph for individual subject attendance with percentage */}
-          <div className="bg-white p-8 rounded-xl shadow-lg flex-1 max-w-xl mx-auto">
-            <h1 className="text-3xl font-semibold mb-6 text-center text-gray-800">Subject-wise Attendance</h1>
+          {/* Bar graph for individual subject attendance */}
+          <div className="bg-white p-8 rounded-xl shadow-lg">
+            <h1 className="text-2xl font-semibold mb-6 text-center text-gray-800">Subject-wise Attendance</h1>
             <div className="h-80">
               <Bar
                 data={renderBarChartData()}
@@ -161,23 +162,21 @@ function Dashboard() {
                   responsive: true,
                   scales: {
                     x: {
-                      beginAtZero: true,
-                      ticks: { font: { size: 14 }, color: "#4B5563" },
+                      ticks: { font: { size: 12 }, color: "#4B5563" },
                       title: {
                         display: true,
                         text: "Subjects",
-                        font: { size: 16, weight: "bold" },
+                        font: { size: 14, weight: "bold" },
                         color: "#4B5563",
                       },
                     },
                     y: {
-                      beginAtZero: true,
                       max: 100,
-                      ticks: { font: { size: 14 }, color: "#4B5563" },
+                      ticks: { font: { size: 12 }, color: "#4B5563" },
                       title: {
                         display: true,
                         text: "Attendance (%)",
-                        font: { size: 16, weight: "bold" },
+                        font: { size: 14, weight: "bold" },
                         color: "#4B5563",
                       },
                     },
@@ -185,7 +184,7 @@ function Dashboard() {
                   plugins: {
                     legend: {
                       labels: {
-                        font: { size: 16, weight: "bold" },
+                        font: { size: 12, weight: "bold" },
                         color: "#4B5563",
                       },
                     },

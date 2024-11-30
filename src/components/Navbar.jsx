@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { signOut } from "../firebase";  // Import the sign-out function
+import { signOut } from "../firebase"; // Import the sign-out function
 
 const Navbar = ({ user }) => {
   const location = useLocation();
@@ -12,20 +12,21 @@ const Navbar = ({ user }) => {
   const handleSignOut = async () => {
     try {
       await signOut(); // Sign the user out
-      navigate("/signin");  // Redirect to sign-in page after sign-out
+      navigate("/signin"); // Redirect to sign-in page after sign-out
     } catch (error) {
       console.error("Error signing out:", error);
     }
   };
 
   return (
-    <nav className="bg-white shadow-md fixed top-0 left-0 w-full z-10 contents">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8 h-[10vh]">
+    <nav className="bg-white shadow-md conents top-0 left-0 w-full z-20">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
+          {/* Logo */}
           <div className="flex items-center">
-            <h1 className="text-xl font-bold text-blue-600">
+            <Link to="/" className="text-2xl font-bold text-blue-600">
               Attendance Tracker
-            </h1>
+            </Link>
           </div>
 
           {/* Desktop Navigation Links */}
@@ -34,25 +35,37 @@ const Navbar = ({ user }) => {
               <>
                 <Link
                   to="/subject-setup"
-                  className={`font-medium ${isActive("/subject-setup") ? "text-blue-600" : "text-gray-700 hover:text-blue-600"}`}
+                  className={`font-medium transition-colors ${
+                    isActive("/subject-setup")
+                      ? "text-blue-600"
+                      : "text-gray-700 hover:text-blue-600"
+                  }`}
                 >
                   Setup
                 </Link>
                 <Link
                   to="/attendance"
-                  className={`font-medium ${isActive("/attendance") ? "text-blue-600" : "text-gray-700 hover:text-blue-600"}`}
+                  className={`font-medium transition-colors ${
+                    isActive("/attendance")
+                      ? "text-blue-600"
+                      : "text-gray-700 hover:text-blue-600"
+                  }`}
                 >
                   Attendance
                 </Link>
                 <Link
                   to="/dashboard"
-                  className={`font-medium ${isActive("/dashboard") ? "text-blue-600" : "text-gray-700 hover:text-blue-600"}`}
+                  className={`font-medium transition-colors ${
+                    isActive("/dashboard")
+                      ? "text-blue-600"
+                      : "text-gray-700 hover:text-blue-600"
+                  }`}
                 >
                   Dashboard
                 </Link>
                 <button
                   onClick={handleSignOut}
-                  className="text-gray-700 font-medium hover:text-blue-600"
+                  className="font-medium text-gray-700 hover:text-red-600 transition-colors"
                 >
                   Sign Out
                 </button>
@@ -63,49 +76,85 @@ const Navbar = ({ user }) => {
           {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button
-              className="text-gray-700 hover:text-blue-600"
-              onClick={() => setMobileMenuOpen(!isMobileMenuOpen)}  // Toggle mobile menu visibility
+              className="text-gray-700 hover:text-blue-600 transition-colors focus:outline-none"
+              onClick={() => setMobileMenuOpen(!isMobileMenuOpen)}
             >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d={
+                    isMobileMenuOpen
+                      ? "M6 18L18 6M6 6l12 12" // Close icon
+                      : "M4 6h16M4 12h16M4 18h16" // Hamburger icon
+                  }
+                />
               </svg>
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden flex flex-col items-center space-y-4">
-            {user && (
-              <>
-                <Link
-                  to="/subject-setup"
-                  className={`font-medium ${isActive("/subject-setup") ? "text-blue-600" : "text-gray-700 hover:text-blue-600"}`}
-                >
-                  Setup
-                </Link>
-                <Link
-                  to="/attendance"
-                  className={`font-medium ${isActive("/attendance") ? "text-blue-600" : "text-gray-700 hover:text-blue-600"}`}
-                >
-                  Attendance
-                </Link>
-                <Link
-                  to="/dashboard"
-                  className={`font-medium ${isActive("/dashboard") ? "text-blue-600" : "text-gray-700 hover:text-blue-600"}`}
-                >
-                  Dashboard
-                </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="text-gray-700 font-medium hover:text-blue-600"
-                >
-                  Sign Out
-                </button>
-              </>
-            )}
-          </div>
-        )}
+      {/* Mobile Navigation Links */}
+      <div
+        className={`md:hidden transition-all duration-300 ease-in-out overflow-hidden ${
+          isMobileMenuOpen ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        <div className="flex flex-col items-center space-y-4 py-4 bg-white shadow-md">
+          {user && (
+            <>
+              <Link
+                to="/subject-setup"
+                className={`font-medium transition-colors ${
+                  isActive("/subject-setup")
+                    ? "text-blue-600"
+                    : "text-gray-700 hover:text-blue-600"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Setup
+              </Link>
+              <Link
+                to="/attendance"
+                className={`font-medium transition-colors ${
+                  isActive("/attendance")
+                    ? "text-blue-600"
+                    : "text-gray-700 hover:text-blue-600"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Attendance
+              </Link>
+              <Link
+                to="/dashboard"
+                className={`font-medium transition-colors ${
+                  isActive("/dashboard")
+                    ? "text-blue-600"
+                    : "text-gray-700 hover:text-blue-600"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+              <button
+                onClick={() => {
+                  handleSignOut();
+                  setMobileMenuOpen(false);
+                }}
+                className="font-medium text-gray-700 hover:text-red-600 transition-colors"
+              >
+                Sign Out
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </nav>
   );

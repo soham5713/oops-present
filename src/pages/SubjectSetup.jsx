@@ -1,12 +1,38 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
 function SubjectSetup() {
   const [subjects, setSubjects] = useState([]);
   const [subjectInput, setSubjectInput] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const navigate = useNavigate(); // Initialize useNavigate for redirection
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      const user = auth.currentUser;
+      if (user) {
+        const db = getFirestore();
+        const userRef = doc(db, "users", user.uid);
+
+        try {
+          const userDoc = await getDoc(userRef);
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const existingSubjects = Object.keys(userData.subjects || {});
+            setSubjects(existingSubjects);
+          }
+        } catch (error) {
+          console.error("Error fetching subjects: ", error);
+          setError("Error fetching subjects. Please try again later.");
+        }
+      }
+    };
+
+    fetchSubjects();
+  }, []);
 
   const handleAddSubject = () => {
     const newSubject = subjectInput.trim();
@@ -25,35 +51,49 @@ function SubjectSetup() {
     setSuccess("Subject added successfully!");
   };
 
+  const handleKeyPress = (event) => {
+    if (event.key === "Enter") {
+      handleAddSubject();
+    }
+  };
+
   const handleSubmit = async () => {
     if (subjects.length === 0) {
       setError("Please add at least one subject.");
       return;
     }
-  
+
     const user = auth.currentUser;
     if (user) {
       const db = getFirestore();
       const userRef = doc(db, "users", user.uid);
-  
+
       try {
-        await setDoc(userRef, {
-          subjects: subjects.reduce((acc, subject) => {
-            acc[subject] = { theory: "", lab: "" };
-            return acc;
-          }, {}),
-          setupCompleted: true, // Add this field to indicate that the setup is completed
-        }, { merge: true }); // Use merge to avoid overwriting other fields if they exist
-  
+        await setDoc(
+          userRef,
+          {
+            subjects: subjects.reduce((acc, subject) => {
+              acc[subject] = { theory: "", lab: "" };
+              return acc;
+            }, {}),
+            setupCompleted: true,
+          },
+          { merge: true }
+        );
+
         setSuccess("Subjects have been saved successfully!");
         setError("");
+
+        // Redirect to attendance page after saving subjects
+        setTimeout(() => {
+          navigate("/attendance"); // Replace with your attendance page route
+        }, 1000); // Adding a short delay for better UX
       } catch (error) {
         console.error("Error saving subjects: ", error);
         setError("Error saving subjects. Please try again.");
       }
     }
   };
-  
 
   const handleClearAll = () => {
     setSubjects([]);
@@ -63,8 +103,8 @@ function SubjectSetup() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-[66vh] md:min-h-[90vh]">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-[75%] md:max-w-md">
+    <div className="flex justify-center items-center min-h-[calc(100vh-4rem)]">
+      <div className="bg-white m-6 p-6 rounded-lg shadow-lg w-full max-w-[75%] md:max-w-md">
         <h1 className="text-3xl font-semibold mb-4 text-center text-gray-800">Subject Setup</h1>
 
         {error && (
@@ -83,6 +123,7 @@ function SubjectSetup() {
             type="text"
             value={subjectInput}
             onChange={(e) => setSubjectInput(e.target.value)}
+            onKeyDown={handleKeyPress}
             placeholder="Enter subject name"
             className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, provider, signInWithPopup } from '../firebase'; // Import auth and provider
+import { auth, provider, signInWithPopup } from "../firebase"; // Import auth and provider
 
 function SignIn() {
   const [error, setError] = useState(null);
@@ -18,16 +18,28 @@ function SignIn() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100">
-      <div className="bg-white p-8 rounded-md shadow-md w-96">
-        <h2 className="text-2xl font-semibold text-center mb-4">Sign In with Google</h2>
-        {error && <p className="text-red-500 text-sm text-center mb-2">{error}</p>}
+    <div className="flex justify-center items-center min-h-[66vh] md:min-h-[90vh]">
+      <div className="bg-white p-8 rounded-lg shadow-lg w-96 max-w-md">
+        <h2 className="text-3xl font-semibold text-center text-gray-800 mb-6">Sign In</h2>
+        <p className="text-lg text-center text-gray-600 mb-4">Please sign in with your Google account to continue.</p>
+        
+        {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
+        
         <button
           onClick={handleGoogleSignIn}
-          className="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          className="w-full py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center justify-center gap-3 transition duration-200"
         >
+          <img
+            src="https://logos-world.net/wp-content/uploads/2020/09/Google-Symbol.png"
+            alt="Google logo"
+            className="w-10"
+          />
           Sign In with Google
         </button>
+        
+        <div className="mt-6 text-center text-gray-600">
+          <p>Don't have an account? <a href="/signup" className="text-blue-500 font-semibold hover:underline">Sign Up</a></p>
+        </div>
       </div>
     </div>
   );
