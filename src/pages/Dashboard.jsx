@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "../firebase";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
-import { Pie, Bar } from "react-chartjs-2"; // Importing both Pie and Bar
+import { Pie, Bar } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from "chart.js";
 
 // Register Chart.js components
@@ -11,6 +11,7 @@ function Dashboard() {
   const [attendanceData, setAttendanceData] = useState({});
   const [subjects, setSubjects] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const fetchAttendanceData = async () => {
@@ -23,15 +24,23 @@ function Dashboard() {
         if (docSnap.exists()) {
           const userData = docSnap.data();
           setAttendanceData(userData.attendance || {});
-          setSubjects(Object.keys(userData.subjects || {})); // Fetch subjects
+          setSubjects(Object.keys(userData.subjects || {}));
           setIsLoaded(true);
         }
       }
     };
     fetchAttendanceData();
+
+    // Check window width to determine if the device is mobile
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768); // Adjust 768px breakpoint as needed
+    };
+
+    handleResize(); // Initial check
+    window.addEventListener("resize", handleResize); // Listen for window resize
+    return () => window.removeEventListener("resize", handleResize); // Clean up listener
   }, []);
 
-  // Calculate total attendance for pie chart
   const calculateTotalAttendance = () => {
     let present = 0;
     let total = 0;
@@ -40,14 +49,13 @@ function Dashboard() {
       Object.values(dailyAttendance).forEach(({ theory, lab }) => {
         if (theory === "Present") present += 1;
         if (lab === "Present") present += 1;
-        total += 2; // 1 for theory, 1 for lab
+        total += 2;
       });
     });
 
     return { present, absent: total - present, total };
   };
 
-  // Render data for Pie chart
   const renderPieChartData = () => {
     const { present, absent, total } = calculateTotalAttendance();
     const presentPercentage = (present / total) * 100;
@@ -59,15 +67,14 @@ function Dashboard() {
         {
           data: [presentPercentage, absentPercentage],
           backgroundColor: ["#34D399", "#EF4444"],
-          borderWidth: 0, // Remove border
+          borderWidth: 0,
         },
       ],
     };
   };
 
-  // Render data for the Double Bar Chart with percentage
   const renderBarChartData = () => {
-    const labels = subjects; // Use subjects as labels
+    const labels = subjects;
     const theoryPercentageData = [];
     const labPercentageData = [];
 
@@ -84,7 +91,6 @@ function Dashboard() {
         }
       });
 
-      // Calculate the percentage for each subject
       const theoryPercentage = (theoryCount / totalCount) * 100;
       const labPercentage = (labCount / totalCount) * 100;
 
@@ -99,17 +105,17 @@ function Dashboard() {
           label: "Theory Attendance (%)",
           data: theoryPercentageData,
           backgroundColor: "#3B82F6",
-          barThickness: 35,
-          borderRadius: 8,
-          hoverBackgroundColor: "#1D4ED8", // Add hover effect
+          barThickness: isMobile ? 20 : 25, // Adjust bar thickness for mobile
+          // borderRadius: 8,
+          hoverBackgroundColor: "#1D4ED8",
         },
         {
           label: "Lab Attendance (%)",
           data: labPercentageData,
           backgroundColor: "#FF9F00",
-          barThickness: 35,
-          borderRadius: 8,
-          hoverBackgroundColor: "#FB923C", // Add hover effect
+          barThickness: isMobile ? 20 : 25, // Adjust bar thickness for mobile
+          // borderRadius: 8,
+            hoverBackgroundColor: "#FB923C",
         },
       ],
     };
@@ -118,17 +124,15 @@ function Dashboard() {
   if (!isLoaded) {
     return (
       <div className="flex justify-center items-center min-h-[90vh]">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-4 border-blue-500"></div> {/* Spinner loader */}
+        <div className="animate-spin rounded-full h-32 w-32 border-t-4 border-blue-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex justify-center items-center min-h-[90vh] p-4"> {/* Adjust for fixed Navbar */}
+    <div className="flex justify-center items-center min-h-[90vh] p-4">
       <div className="w-full max-w-5xl space-y-8">
-        {/* Charts container */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Pie chart for total attendance percentage */}
           <div className="bg-white p-8 rounded-xl shadow-lg">
             <h1 className="text-2xl font-semibold mb-6 text-center text-gray-800">Total Attendance</h1>
             <Pie
@@ -152,7 +156,6 @@ function Dashboard() {
             />
           </div>
 
-          {/* Bar graph for individual subject attendance */}
           <div className="bg-white p-8 rounded-xl shadow-lg">
             <h1 className="text-2xl font-semibold mb-6 text-center text-gray-800">Subject-wise Attendance</h1>
             <div className="h-80">
