@@ -1,36 +1,21 @@
-import { BrowserRouter as Router, Routes, Navigate, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"; // Import Navigate here
 import { useState, useEffect } from "react";
 import { auth } from "./firebase";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import SignIn from "./pages/SignIn";
 import SubjectSetup from "./pages/SubjectSetup";
 import Attendance from "./pages/Attendance";
 import Navbar from "./components/Navbar";
 import Dashboard from "./pages/Dashboard";
+import ProtectedRoute from "./components/ProtectedRoute"; // Import the ProtectedRoute component
 
 function App() {
   const [user, setUser] = useState(null);
-  const [isSetupCompleted, setIsSetupCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUser(user);
-
-        // Check setup status in Firestore
-        const db = getFirestore();
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists() && docSnap.data().setupCompleted) {
-          setIsSetupCompleted(true);
-        }
-      } else {
-        setUser(null);
-        setIsSetupCompleted(false);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
       setIsLoading(false);
     });
 
@@ -49,11 +34,47 @@ function App() {
     <Router>
       <Navbar user={user} />
       <Routes>
-        <Route path="/" element={<Navigate to={user ? (isSetupCompleted ? "/attendance" : "/subject-setup") : "/signin"} replace />} />
+        <Route
+          path="/"
+          element={
+            user ? (
+              <Navigate to={user ? "/attendance" : "/subject-setup"} />
+            ) : (
+              <Navigate to="/signin" />
+            )
+          }
+        />
         <Route path="/signin" element={user ? <Navigate to="/" replace /> : <SignIn />} />
-        <Route path="/subject-setup" element={user ? <SubjectSetup setIsSetupCompleted={setIsSetupCompleted} /> : <Navigate to="/signin" replace />} />
-        <Route path="/attendance" element={user ? <Attendance /> : <Navigate to="/signin" replace />} />
-        <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/signin" replace />} />
+        <Route
+          path="/subject-setup"
+          element={
+            <ProtectedRoute
+              element={<SubjectSetup />}
+              redirectTo="/signin"
+              checkSetup={true} // Check if the setup is completed
+            />
+          }
+        />
+        <Route
+          path="/attendance"
+          element={
+            <ProtectedRoute
+              element={<Attendance />}
+              redirectTo="/signin"
+              checkSetup={false} // No setup check needed for attendance
+            />
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute
+              element={<Dashboard />}
+              redirectTo="/signin"
+              checkSetup={false} // No setup check needed for dashboard
+            />
+          }
+        />
         <Route path="*" element={<Navigate to="/signin" replace />} />
       </Routes>
     </Router>
