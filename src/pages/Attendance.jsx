@@ -60,56 +60,82 @@ function AttendancePage() {
   };
 
   if (!isLoaded) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-[90vh]">
+        <div className="animate-spin rounded-full h-32 w-32 border-t-4 border-blue-500"></div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-80">
-        <h1 className="text-2xl font-semibold mb-4 text-center">Attendance</h1>
-        <div className="mb-4">
-          <label>Select Date</label>
+    <div className="flex justify-center items-center min-h-[90vh]">
+      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-3xl mt-5 mb-5">
+        <h1 className="text-3xl font-semibold text-center text-gray-800 mb-8">
+          Attendance Tracker
+        </h1>
+
+        <div className="mb-6">
+          <label htmlFor="date" className="block text-lg text-gray-700 mb-2">
+            Select Date
+          </label>
           <input
+            id="date"
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="w-full p-2 border rounded-lg"
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
+
         {subjects.map((subject) => (
-          <div key={subject} className="mb-4">
-            <h3 className="text-xl">{subject}</h3>
-            <div className="flex justify-between mb-2">
-              <label>Theory</label>
-              <select
-                value={attendanceData[subject]?.theory || ""}
-                onChange={(e) =>
-                  handleAttendanceChange(subject, "theory", e.target.value)
-                }
-              >
-                <option value="">Select</option>
-                <option value="Present">Present</option>
-                <option value="Absent">Absent</option>
-              </select>
-            </div>
-            <div className="flex justify-between mb-2">
-              <label>Lab</label>
-              <select
-                value={attendanceData[subject]?.lab || ""}
-                onChange={(e) =>
-                  handleAttendanceChange(subject, "lab", e.target.value)
-                }
-              >
-                <option value="">Select</option>
-                <option value="Present">Present</option>
-                <option value="Absent">Absent</option>
-              </select>
+          <div key={subject} className="mb-6">
+            <h3 className="text-xl font-medium text-gray-700 mb-4">{subject}</h3>
+
+            <div className="flex space-x-6 mb-6">
+              {/* Theory Section */}
+              <div className="w-1/2">
+                <h4 className="text-lg text-gray-700 mb-2">Theory</h4>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => handleAttendanceChange(subject, "theory", "Present")}
+                    className={`w-32 py-2 rounded-lg text-white ${attendanceData[subject]?.theory === "Present" ? "bg-green-500" : "bg-gray-300"}`}
+                  >
+                    Present
+                  </button>
+                  <button
+                    onClick={() => handleAttendanceChange(subject, "theory", "Absent")}
+                    className={`w-32 py-2 rounded-lg text-white ${attendanceData[subject]?.theory === "Absent" ? "bg-red-500" : "bg-gray-300"}`}
+                  >
+                    Absent
+                  </button>
+                </div>
+              </div>
+
+              {/* Lab Section */}
+              <div className="w-1/2">
+                <h4 className="text-lg text-gray-700 mb-2">Lab</h4>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => handleAttendanceChange(subject, "lab", "Present")}
+                    className={`w-32 py-2 rounded-lg text-white ${attendanceData[subject]?.lab === "Present" ? "bg-green-500" : "bg-gray-300"}`}
+                  >
+                    Present
+                  </button>
+                  <button
+                    onClick={() => handleAttendanceChange(subject, "lab", "Absent")}
+                    className={`w-32 py-2 rounded-lg text-white ${attendanceData[subject]?.lab === "Absent" ? "bg-red-500" : "bg-gray-300"}`}
+                  >
+                    Absent
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         ))}
+
         <button
           onClick={saveAttendance}
-          className="w-full p-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+          className="w-full py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition duration-200"
         >
           Save Attendance
         </button>

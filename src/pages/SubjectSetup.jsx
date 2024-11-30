@@ -5,18 +5,32 @@ import { getFirestore, doc, setDoc } from "firebase/firestore";
 function SubjectSetup() {
   const [subjects, setSubjects] = useState([]);
   const [subjectInput, setSubjectInput] = useState("");
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleAddSubject = () => {
     const newSubject = subjectInput.trim();
-    if (newSubject && !subjects.includes(newSubject)) {
-      setSubjects([...subjects, newSubject]);
-      setSubjectInput("");
-    } else {
-      alert("Subject already exists or input is empty.");
+    if (!newSubject) {
+      setError("Subject name cannot be empty.");
+      return;
     }
+    if (subjects.includes(newSubject)) {
+      setError("Subject already exists.");
+      return;
+    }
+
+    setSubjects((prevSubjects) => [...prevSubjects, newSubject]);
+    setSubjectInput("");
+    setError("");
+    setSuccess("Subject added successfully!");
   };
 
   const handleSubmit = async () => {
+    if (subjects.length === 0) {
+      setError("Please add at least one subject.");
+      return;
+    }
+
     const user = auth.currentUser;
     if (user) {
       const db = getFirestore();
@@ -29,48 +43,82 @@ function SubjectSetup() {
             return acc;
           }, {}),
         });
-        alert("Subjects have been saved successfully!");
+        setSuccess("Subjects have been saved successfully!");
+        setError("");
       } catch (error) {
         console.error("Error saving subjects: ", error);
+        setError("Error saving subjects. Please try again.");
       }
     }
   };
 
+  const handleClearAll = () => {
+    setSubjects([]);
+    setSubjectInput("");
+    setError("");
+    setSuccess("");
+  };
+
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-80">
-        <h1 className="text-2xl font-semibold mb-4 text-center">Subject Setup</h1>
-        <div className="mb-4">
+    <div className="flex justify-center items-center min-h-[90vh]">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h1 className="text-3xl font-semibold mb-4 text-center text-gray-800">Subject Setup</h1>
+
+        {error && (
+          <div className="mb-4 text-red-500 text-center">
+            <span>{error}</span>
+          </div>
+        )}
+        {success && (
+          <div className="mb-4 text-green-500 text-center">
+            <span>{success}</span>
+          </div>
+        )}
+
+        <div className="mb-6">
           <input
             type="text"
             value={subjectInput}
             onChange={(e) => setSubjectInput(e.target.value)}
             placeholder="Enter subject name"
-            className="w-full p-2 border rounded-lg"
+            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+
+        <div className="mb-6">
           <button
             onClick={handleAddSubject}
-            className="w-full p-2 mt-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="w-full p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-200"
           >
             Add Subject
           </button>
         </div>
+
         {subjects.length > 0 && (
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold">Subjects Added:</h2>
-            <ul className="list-disc pl-5">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-700">Subjects Added:</h2>
+            <ul className="list-disc pl-5 text-gray-700">
               {subjects.map((subject, index) => (
                 <li key={index}>{subject}</li>
               ))}
             </ul>
           </div>
         )}
-        <button
-          onClick={handleSubmit}
-          className="w-full p-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-        >
-          Save Subjects
-        </button>
+
+        <div className="flex justify-between mb-6 gap-5">
+          <button
+            onClick={handleClearAll}
+            className="w-1/2 p-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-200"
+          >
+            Clear All
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="w-1/2 p-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-200"
+          >
+            Save Subjects
+          </button>
+        </div>
       </div>
     </div>
   );

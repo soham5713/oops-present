@@ -19,8 +19,8 @@ const Navbar = ({ user }) => {
   };
 
   return (
-    <nav className="bg-white shadow-md fixed top-0 left-0 w-full z-10">
-      <div className="mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="bg-white shadow-md fixed top-0 left-0 w-full z-10 contents">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8 h-[10vh]">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <h1 className="text-xl font-bold text-blue-600">
