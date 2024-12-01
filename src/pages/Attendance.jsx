@@ -3,29 +3,122 @@ import { auth } from "../firebase";
 import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
+// Dummy timetable data (same as in SubjectSetup.jsx)
+const dummyTimetable = {
+  A: {
+    Monday: ["Math", "Physics", "Chemistry", "English"],
+    Tuesday: ["Biology", "Math", "History", "PE"],
+    Wednesday: ["Physics", "Chemistry", "English", "CS"],
+    Thursday: ["History", "Biology", "Math", "PE"],
+    Friday: ["CS", "Physics", "Chemistry", "English"],
+    Saturday: ["Math", "Sports", "Lab", "History"],
+    Sunday: ["Sports", "Lab", "English", "History"],
+  },
+  B: {
+    Monday: ["English", "History", "PE", "Math"],
+    Tuesday: ["Physics", "Chemistry", "CS", "Biology"],
+    Wednesday: ["Math", "PE", "History", "English"],
+    Thursday: ["CS", "Biology", "Physics", "Chemistry"],
+    Friday: ["Math", "English", "PE", "History"],
+    Saturday: ["Lab", "Sports", "Math", "Physics"],
+    Sunday: ["Physics", "Chemistry", "English", "CS"],
+  },
+  C: {
+    Monday: ["CS", "Physics", "Biology", "Math"],
+    Tuesday: ["Chemistry", "English", "History", "PE"],
+    Wednesday: ["Math", "Biology", "Physics", "CS"],
+    Thursday: ["PE", "History", "Chemistry", "English"],
+    Friday: ["Biology", "Math", "Physics", "CS"],
+    Saturday: ["Sports", "Lab", "English", "History"],
+    Sunday: ["Math", "Sports", "Lab", "History"],
+  },
+};
+
 function AttendancePage() {
   const [subjects, setSubjects] = useState([]);
   const [attendanceData, setAttendanceData] = useState({});
   const [date, setDate] = useState("");
+  const [division, setDivision] = useState("");
+  const [timetable, setTimetable] = useState([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  // Function to get the current day
+  const getCurrentDay = () => {
+    return new Date().toLocaleString("en-US", { weekday: "long" });
+  };
+
+  // Function to get subjects for a specific day
+  const getSubjectsForDay = (division, day) => {
+    return dummyTimetable[division]?.[day] || [];
+  };
+
   useEffect(() => {
-    const fetchSubjects = async () => {
+    const fetchUserDivisionAndTimetable = async () => {
       const user = auth.currentUser;
       if (user) {
         const db = getFirestore();
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
+        const userRef = doc(db, "users", user.uid);
 
-        if (docSnap.exists() && docSnap.data().subjects) {
-          setSubjects(Object.keys(docSnap.data().subjects));
-          setIsLoaded(true);
+        try {
+          const userDoc = await getDoc(userRef);
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            const userDivision = userData.division || "";
+            setDivision(userDivision);
+
+            // Set the date to today by default
+            const today = new Date().toISOString().split('T')[0];
+            setDate(today);
+
+            // Get subjects for the current day
+            const currentDay = getCurrentDay();
+            const currentDaySubjects = getSubjectsForDay(userDivision, currentDay);
+            setTimetable(currentDaySubjects);
+
+            // Initialize attendance data for current day subjects
+            const initialAttendanceData = {};
+            currentDaySubjects.forEach((subject) => {
+              initialAttendanceData[subject] = {
+                theory: userData.attendance?.[today]?.[subject]?.theory || "",
+                lab: userData.attendance?.[today]?.[subject]?.lab || "",
+              };
+            });
+            setAttendanceData(initialAttendanceData);
+            setSubjects(currentDaySubjects);
+
+            setIsLoaded(true);
+          }
+        } catch (error) {
+          console.error("Error fetching user data: ", error);
+          setError("Error fetching data. Please try again later.");
         }
       }
     };
-    fetchSubjects();
-  }, []);
+
+    fetchUserDivisionAndTimetable();
+  }, []); // Empty dependency array to run only once on component mount
+
+  useEffect(() => {
+    // This effect runs when the date changes
+    if (division && date) {
+      const selectedDay = new Date(date).toLocaleString("en-US", { weekday: "long" });
+      const daySubjects = getSubjectsForDay(division, selectedDay);
+      setTimetable(daySubjects);
+
+      // Reinitialize attendance data for the selected day
+      const initialAttendanceData = {};
+      daySubjects.forEach((subject) => {
+        initialAttendanceData[subject] = {
+          theory: "",
+          lab: "",
+        };
+      });
+      setAttendanceData(initialAttendanceData);
+      setSubjects(daySubjects);
+    }
+  }, [date, division]);
 
   const handleAttendanceChange = (subject, type, value) => {
     setAttendanceData((prev) => ({
@@ -50,7 +143,7 @@ function AttendancePage() {
         const userData = docSnap.exists() ? docSnap.data() : {};
         const updatedAttendance = userData.attendance || {};
 
-        // Save attendance for the selected date
+        // Update attendance for the selected date
         updatedAttendance[date] = attendanceData;
 
         await updateDoc(docRef, { attendance: updatedAttendance });
@@ -64,14 +157,6 @@ function AttendancePage() {
     }
   };
 
-  if (!isLoaded) {
-    return (
-      <div className="flex justify-center items-center min-h-[90vh]">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-4 border-blue-500"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex justify-center items-center min-h-[90vh] p-4">
       <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-3xl mt-5 mb-5">
@@ -79,6 +164,13 @@ function AttendancePage() {
           Attendance Tracker
         </h1>
 
+        {error && (
+          <div className="mb-4 text-red-500 text-center">
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Date Selection */}
         <div className="mb-6">
           <label htmlFor="date" className="block text-lg text-gray-700 mb-2">
             Select Date
@@ -92,74 +184,64 @@ function AttendancePage() {
           />
         </div>
 
-        {subjects.map((subject) => (
-          <div key={subject} className="mb-6">
-            <h3 className="text-lg md:text-xl font-medium text-gray-700 mb-4">{subject}</h3>
-
-            <div className="flex flex-col md:flex-row md:space-x-6 mb-6">
-              {/* Theory Section */}
-              <div className="w-full md:w-1/2 mb-4 md:mb-0">
-                <h4 className="text-lg text-gray-700 mb-2">Theory</h4>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => handleAttendanceChange(subject, "theory", "Present")}
-                    className={`w-full md:w-32 py-2 rounded-lg text-white ${
-                      attendanceData[subject]?.theory === "Present"
-                        ? "bg-green-500"
-                        : "bg-gray-300"
-                    }`}
-                  >
-                    Present
-                  </button>
-                  <button
-                    onClick={() => handleAttendanceChange(subject, "theory", "Absent")}
-                    className={`w-full md:w-32 py-2 rounded-lg text-white ${
-                      attendanceData[subject]?.theory === "Absent"
-                        ? "bg-red-500"
-                        : "bg-gray-300"
-                    }`}
-                  >
-                    Absent
-                  </button>
-                </div>
-              </div>
-
-              {/* Lab Section */}
-              <div className="w-full md:w-1/2">
-                <h4 className="text-lg text-gray-700 mb-2">Lab</h4>
-                <div className="flex space-x-4">
-                  <button
-                    onClick={() => handleAttendanceChange(subject, "lab", "Present")}
-                    className={`w-full md:w-32 py-2 rounded-lg text-white ${
-                      attendanceData[subject]?.lab === "Present"
-                        ? "bg-green-500"
-                        : "bg-gray-300"
-                    }`}
-                  >
-                    Present
-                  </button>
-                  <button
-                    onClick={() => handleAttendanceChange(subject, "lab", "Absent")}
-                    className={`w-full md:w-32 py-2 rounded-lg text-white ${
-                      attendanceData[subject]?.lab === "Absent"
-                        ? "bg-red-500"
-                    : "bg-gray-300"
-                    }`}
-                  >
-                    Absent
-                  </button>
-                </div>
-              </div>
+        {/* Timetable and Attendance Input */}
+        {isLoaded && division && timetable.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-700">
+              {new Date(date).toLocaleString("en-US", { weekday: "long" })}'s Timetable:
+            </h2>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="font-semibold">Subject</div>
+              <div className="font-semibold">Theory</div>
+              <div className="font-semibold">Lab</div>
+              {timetable.map((subject, index) => (
+                <React.Fragment key={index}>
+                  <div>{subject}</div>
+                  <div className="flex space-x-4">
+                    {/* Theory Attendance */}
+                    <button
+                      onClick={() => handleAttendanceChange(subject, "theory", "Present")}
+                      className={`w-20 py-2 rounded-lg text-white ${attendanceData[subject]?.theory === "Present" ? "bg-green-500" : "bg-gray-300"}`}
+                    >
+                      Present
+                    </button>
+                    <button
+                      onClick={() => handleAttendanceChange(subject, "theory", "Absent")}
+                      className={`w-20 py-2 rounded-lg text-white ${attendanceData[subject]?.theory === "Absent" ? "bg-red-500" : "bg-gray-300"}`}
+                    >
+                      Absent
+                    </button>
+                  </div>
+                  <div className="flex space-x-4">
+                    {/* Lab Attendance */}
+                    <button
+                      onClick={() => handleAttendanceChange(subject, "lab", "Present")}
+                      className={`w-20 py-2 rounded-lg text-white ${attendanceData[subject]?.lab === "Present" ? "bg-green-500" : "bg-gray-300"}`}
+                    >
+                      Present
+                    </button>
+                    <button
+                      onClick={() => handleAttendanceChange(subject, "lab", "Absent")}
+                      className={`w-20 py-2 rounded-lg text-white ${attendanceData[subject]?.lab === "Absent" ? "bg-red-500" : "bg-gray-300"}`}
+                    >
+                      Absent
+                    </button>
+                  </div>
+                </React.Fragment>
+              ))}
             </div>
           </div>
-        ))}
+        )}
 
-        <button
-          onClick={saveAttendance}
-          className="w-full py-3 bg-green-500 text-white font-semibold rounded-lg hover:bg-green-600 transition duration-200"
-        >
-          Save Attendance
-        </button>
+        {/* Save Attendance Button */}
+        <div className="flex justify-center">
+          <button
+            onClick={saveAttendance}
+            className="w-full py-3 bg-blue-500 text-white rounded-lg mt-6 font-semibold"
+          >
+            Save Attendance
+          </button>
+        </div>
       </div>
     </div>
   );

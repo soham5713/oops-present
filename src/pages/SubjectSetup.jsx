@@ -1,17 +1,48 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+
+// Dummy timetable data
+const dummyTimetable = {
+  A: {
+    Monday: ["Math", "Physics", "Chemistry", "English"],
+    Tuesday: ["Biology", "Math", "History", "PE"],
+    Wednesday: ["Physics", "Chemistry", "English", "CS"],
+    Thursday: ["History", "Biology", "Math", "PE"],
+    Friday: ["CS", "Physics", "Chemistry", "English"],
+    Saturday: ["Math", "Sports", "Lab", "History"],
+    Sunday: ["Sports", "Lab", "English", "History"],
+  },
+  B: {
+    Monday: ["English", "History", "PE", "Math"],
+    Tuesday: ["Physics", "Chemistry", "CS", "Biology"],
+    Wednesday: ["Math", "PE", "History", "English"],
+    Thursday: ["CS", "Biology", "Physics", "Chemistry"],
+    Friday: ["Math", "English", "PE", "History"],
+    Saturday: ["Lab", "Sports", "Math", "Physics"],
+    Sunday: ["Physics", "Chemistry", "English", "CS"],
+  },
+  C: {
+    Monday: ["CS", "Physics", "Biology", "Math"],
+    Tuesday: ["Chemistry", "English", "History", "PE"],
+    Wednesday: ["Math", "Biology", "Physics", "CS"],
+    Thursday: ["PE", "History", "Chemistry", "English"],
+    Friday: ["Biology", "Math", "Physics", "CS"],
+    Saturday: ["Sports", "Lab", "English", "History"],
+    Sunday: ["Math", "Sports", "Lab", "History"],
+  },
+};
 
 function SubjectSetup() {
-  const [subjects, setSubjects] = useState([]);
-  const [subjectInput, setSubjectInput] = useState("");
+  const [division, setDivision] = useState("");
+  const [timetable, setTimetable] = useState([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const navigate = useNavigate(); // Initialize useNavigate for redirection
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchSubjects = async () => {
+    const fetchUserDivision = async () => {
       const user = auth.currentUser;
       if (user) {
         const db = getFirestore();
@@ -21,91 +52,73 @@ function SubjectSetup() {
           const userDoc = await getDoc(userRef);
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            const existingSubjects = Object.keys(userData.subjects || {});
-            setSubjects(existingSubjects);
+            setDivision(userData.division || ""); // Fetch user's division
           }
         } catch (error) {
-          console.error("Error fetching subjects: ", error);
-          setError("Error fetching subjects. Please try again later.");
+          console.error("Error fetching user division: ", error);
+          setError("Error fetching user division. Please try again later.");
         }
       }
     };
 
-    fetchSubjects();
+    fetchUserDivision();
   }, []);
 
-  const handleAddSubject = () => {
-    const newSubject = subjectInput.trim();
-    if (!newSubject) {
-      setError("Subject name cannot be empty.");
-      return;
+  useEffect(() => {
+    if (division) {
+      const currentDay = new Date().toLocaleString("en-US", {
+        weekday: "long",
+      });
+      const divisionTimetable = dummyTimetable[division]?.[currentDay] || [];
+      setTimetable(divisionTimetable);
     }
-    if (subjects.includes(newSubject)) {
-      setError("Subject already exists.");
-      return;
-    }
+  }, [division]);
 
-    setSubjects((prevSubjects) => [...prevSubjects, newSubject]);
-    setSubjectInput("");
-    setError("");
-    setSuccess("Subject added successfully!");
-  };
-
-  const handleKeyPress = (event) => {
-    if (event.key === "Enter") {
-      handleAddSubject();
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (subjects.length === 0) {
-      setError("Please add at least one subject.");
-      return;
-    }
-
-    const user = auth.currentUser;
-    if (user) {
-      const db = getFirestore();
-      const userRef = doc(db, "users", user.uid);
-
-      try {
-        await setDoc(
-          userRef,
-          {
-            subjects: subjects.reduce((acc, subject) => {
-              acc[subject] = { theory: "", lab: "" };
-              return acc;
-            }, {}),
-            setupCompleted: true,
-          },
-          { merge: true }
-        );
-
-        setSuccess("Subjects have been saved successfully!");
-        setError("");
-
-        // Redirect to attendance page after saving subjects
-        setTimeout(() => {
-          navigate("/attendance"); // Replace with your attendance page route
-        }, 1000); // Adding a short delay for better UX
-      } catch (error) {
-        console.error("Error saving subjects: ", error);
-        setError("Error saving subjects. Please try again.");
-      }
-    }
-  };
-
-  const handleClearAll = () => {
-    setSubjects([]);
-    setSubjectInput("");
+  const handleDivisionChange = (event) => {
+    setDivision(event.target.value);
     setError("");
     setSuccess("");
   };
 
+  const handleSubmit = async () => {
+    const user = auth.currentUser;  // Get the current user
+    if (user) {
+      const db = getFirestore();  // Initialize Firestore
+      const userRef = doc(db, "users", user.uid);  // Reference to the user's document
+  
+      try {
+        // Save data to Firestore
+        await setDoc(
+          userRef,
+          {
+            division: division,  // Save the division
+            timetable: timetable, // Save the timetable (subject list)
+            setupCompleted: true   // Indicate that setup is completed
+          },
+          { merge: true }  // Merge ensures existing fields are preserved, and only new fields are added
+        );
+  
+        setSuccess("Division and timetable have been saved successfully!");
+        setError("");  // Clear any previous errors
+  
+        // Redirect to another page after successful save
+        setTimeout(() => {
+          navigate("/attendance");  // Redirect to the attendance page
+        }, 1000);  // Wait 1 second before redirecting
+      } catch (error) {
+        console.error("Error saving data: ", error);
+        setError("Error saving data. Please try again.");
+      }
+    }
+  };
+  
+
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-4rem)]">
       <div className="bg-white m-6 p-6 rounded-lg shadow-lg w-full max-w-[75%] md:max-w-md">
-        <h1 className="text-3xl font-semibold mb-4 text-center text-gray-800">Subject Setup</h1>
+        <h1 className="text-3xl font-semibold mb-4 text-center text-gray-800">
+          Subject Setup
+        </h1>
 
         {error && (
           <div className="mb-4 text-red-500 text-center">
@@ -119,48 +132,41 @@ function SubjectSetup() {
         )}
 
         <div className="mb-6">
-          <input
-            type="text"
-            value={subjectInput}
-            onChange={(e) => setSubjectInput(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder="Enter subject name"
+          <label htmlFor="division" className="block text-lg text-gray-700 mb-2">
+            Select Division
+          </label>
+          <select
+            id="division"
+            value={division}
+            onChange={handleDivisionChange}
             className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div className="mb-6">
-          <button
-            onClick={handleAddSubject}
-            className="w-full p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-200"
           >
-            Add Subject
-          </button>
+            <option value="">Select Division</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+          </select>
         </div>
 
-        {subjects.length > 0 && (
+        {division && timetable.length > 0 && (
           <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-700">Subjects Added:</h2>
+            <h2 className="text-xl font-semibold text-gray-700">
+              Today's Timetable:
+            </h2>
             <ul className="list-disc pl-5 text-gray-700">
-              {subjects.map((subject, index) => (
+              {timetable.map((subject, index) => (
                 <li key={index}>{subject}</li>
               ))}
             </ul>
           </div>
         )}
 
-        <div className="flex justify-between mb-6 gap-0 md:gap-4 flex-wrap">
-          <button
-            onClick={handleClearAll}
-            className="w-full p-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-200 mb-4 sm:mb-0"
-          >
-            Clear All
-          </button>
+        <div className="mb-6">
           <button
             onClick={handleSubmit}
             className="w-full p-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-200"
           >
-            Save Subjects
+            Save Division
           </button>
         </div>
       </div>
