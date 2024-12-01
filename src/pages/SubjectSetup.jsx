@@ -129,7 +129,7 @@ function SubjectSetup() {
           {
             division: division,
             timetable: timetable,
-            setupCompleted: true,
+            setupCompleted: false,
           },
           { merge: true }
         );
