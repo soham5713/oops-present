@@ -1,19 +1,62 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, provider, signInWithPopup } from "../firebase"; // Import auth and provider
+import { signInWithPopup, auth, provider } from "../firebase"; // Import Firebase services
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../firebase"; // Import Firestore instance
 
 function SignIn() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  const initializeUserData = async (user) => {
+    try {
+      // Reference to the user's document
+      const userDocRef = doc(db, "users", user.uid);
+
+      // Check if the document exists
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // Default data structure
+        const defaultData = {
+          attendance: {
+            "2024-12-01": {
+              English: { lab: "Present", theory: "" },
+              History: { lab: "Absent", theory: "Present" },
+              Lab: { lab: "Absent", theory: "Present" },
+              Sports: { lab: "Present", theory: "Present" },
+            },
+          },
+          division: "A",
+          setupCompleted: true,
+          subjects: {},
+          timetable: ["Math", "Physics", "Chemistry", "English"],
+        };
+
+        // Write the default data to Firestore
+        await setDoc(userDocRef, defaultData);
+        console.log("User data initialized successfully.");
+      } else {
+        console.log("User data already exists.");
+      }
+    } catch (error) {
+      console.error("Error initializing user data:", error);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     try {
-      const result = await signInWithPopup(auth, provider); // Pass auth and provider to signInWithPopup
-      const user = result.user; // Get user info from result
-      console.log("Signed in user:", user);
-      navigate("/dashboard"); // Redirect to dashboard after successful sign-in
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Initialize Firestore data
+      await initializeUserData(user);
+
+      console.log("Signed in and user data initialized:", user);
+      navigate("/dashboard"); // Redirect to dashboard after sign-in
     } catch (error) {
-      setError(error.message); // Set error if any occurs
+      console.error("Error during sign-in:", error);
+      setError(error.message); // Display error to the user
     }
   };
 
@@ -22,9 +65,9 @@ function SignIn() {
       <div className="bg-white p-8 rounded-lg shadow-lg w-96 max-w-md">
         <h2 className="text-3xl font-semibold text-center text-gray-800 mb-6">Sign In</h2>
         <p className="text-lg text-center text-gray-600 mb-4">Please sign in with your Google account to continue.</p>
-        
+
         {error && <p className="text-red-500 text-sm text-center mb-4">{error}</p>}
-        
+
         <button
           onClick={handleGoogleSignIn}
           className="w-full py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center justify-center gap-3 transition duration-200"
@@ -36,9 +79,14 @@ function SignIn() {
           />
           Sign In with Google
         </button>
-        
+
         <div className="mt-6 text-center text-gray-600">
-          <p>Don't have an account? <a href="/signup" className="text-blue-500 font-semibold hover:underline">Sign Up</a></p>
+          <p>
+            Don't have an account?{" "}
+            <a href="/signup" className="text-blue-500 font-semibold hover:underline">
+              Sign Up
+            </a>
+          </p>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { signOut as firebaseSignOut } from 'firebase/auth'; // Use the correct function from the auth module
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { signOut as firebaseSignOut } from 'firebase/auth'; 
 
 const firebaseConfig = {
   apiKey: "AIzaSyB7bQWcAiC1j5xF9VKhrNvOh-WMIbSGh7s",
@@ -14,18 +15,36 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-
-// Get Firebase Authentication and Google Auth provider
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+const db = getFirestore(app);
 
+// Sign-out function
 export const signOut = async () => {
   try {
-    await firebaseSignOut(auth);  // Make sure `auth` is defined correctly
+    await firebaseSignOut(auth);
   } catch (error) {
     console.error("Error signing out:", error);
   }
 };
 
+// Function to create user in Firestore if not already present
+export const createUserInFirestore = async (user) => {
+  if (!user) return;
+
+  const userRef = doc(db, "users", user.uid);
+  const userData = {
+    name: user.displayName || "Anonymous",
+    email: user.email || "No email provided",
+    createdAt: new Date(),
+  };
+
+  try {
+    await setDoc(userRef, userData, { merge: true });
+  } catch (error) {
+    console.error("Error creating user in Firestore:", error);
+  }
+};
+
 // Export services
-export { auth, provider, signInWithPopup };
+export { auth, provider, signInWithPopup, db };
