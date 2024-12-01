@@ -1,41 +1,69 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../firebase";
-import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 
-// Dummy timetable data
-const dummyTimetable = {
+const Timetable = {
   A: {
-    Monday: ["Math", "Physics", "Chemistry", "English"],
-    Tuesday: ["Biology", "Math", "History", "PE"],
-    Wednesday: ["Physics", "Chemistry", "English", "CS"],
-    Thursday: ["History", "Biology", "Math", "PE"],
-    Friday: ["CS", "Physics", "Chemistry", "English"],
-    Saturday: ["Math", "Sports", "Lab", "History"],
-    Sunday: ["Sports", "Lab", "English", "History"],
+    Monday: ["PSIPL", "EP", "DS", "TS", "MT"],
+    Tuesday: ["PSIPL", "IKS", "EP", "DS"],
+    Wednesday: ["TS", "MT", "EP", "DS", "ECL", "PSIPL"],
+    Thursday: ["ECL", "DS", "TS", "MT", "EP"],
+    Friday: ["IKS", "EP", "ECL", "MT", "EP", "DS", "TS"],
   },
   B: {
-    Monday: ["English", "History", "PE", "Math"],
-    Tuesday: ["Physics", "Chemistry", "CS", "Biology"],
-    Wednesday: ["Math", "PE", "History", "English"],
-    Thursday: ["CS", "Biology", "Physics", "Chemistry"],
-    Friday: ["Math", "English", "PE", "History"],
-    Saturday: ["Lab", "Sports", "Math", "Physics"],
-    Sunday: ["Physics", "Chemistry", "English", "CS"],
+    Monday: ["EP", "DS", "ECL", "IKS", "MT"],
+    Tuesday: ["DS", "TS", "EP", "IKS", "ECL", "DS"],
+    Wednesday: ["PSIPL", "DS", "TS", "PSIPL", "MT"],
+    Thursday: ["PSIPL", "EP", "ECL", "TS"],
+    Friday: ["TS", "MT", "EP", "DS"],
   },
   C: {
-    Monday: ["CS", "Physics", "Biology", "Math"],
-    Tuesday: ["Chemistry", "English", "History", "PE"],
-    Wednesday: ["Math", "Biology", "Physics", "CS"],
-    Thursday: ["PE", "History", "Chemistry", "English"],
-    Friday: ["Biology", "Math", "Physics", "CS"],
-    Saturday: ["Sports", "Lab", "English", "History"],
-    Sunday: ["Math", "Sports", "Lab", "History"],
+    Monday: ["EC", "DS", "TS", "PSIPL"],
+    Tuesday: ["DS", "EC", "MT", "ECL", "IKS", "TS"],
+    Wednesday: ["TS", "MT", "EC", "DS", "IKS", "EC"],
+    Thursday: ["ECL", "DS", "MT"],
+    Friday: ["EC", "ECL", "PSIPL", "TS", "EC"],
+  },
+  D: {
+    Monday: ["ECL", "DS", "TS", "MT"],
+    Tuesday: ["DS", "TS", "EC", "IKS", "PSIPL"],
+    Wednesday: ["MT", "EC", "DS", "ECL", "IKS", "TS"],
+    Thursday: ["MT", "EC", "DS", "TS", "PSIPL"],
+    Friday: ["ECL", "EC", "PSIPL", "MT"],
+  },
+  E: {
+    Monday: ["EM", "BEE", "SS1", "ECL"],
+    Tuesday: ["EM", "BEE", "SS1", "ECL", "PSIPL"],
+    Wednesday: ["SS1", "MT", "EM", "BEE", "PSIPL"],
+    Thursday: ["BEE", "SS1", "EM", "ECL", "UHV", "MT"],
+    Friday: ["PSIPL", "UHV", "EM", "MT"],
+  },
+  F: {
+    Monday: ["ECL", "PSIPL", "BEE", "SS1", "MT"],
+    Tuesday: ["ECL", "UHV", "PSIPL", "SS1", "BEE"],
+    Wednesday: ["BEE", "PSIPL", "SS1", "MT", "EM"],
+    Thursday: ["EM", "BEE", "ECL", "BEE", "SS1", "MT"],
+    Friday: ["EM", "UHV", "MT", "SS1"],
+  },
+  G: {
+    Monday: ["EG", "BEE", "SS1", "ECL", "MT"],
+    Tuesday: ["EG", "PSIPL", "UHV", "BEE", "MT"],
+    Wednesday: ["BEE", "SS1", "EG", "ECL", "MT"],
+    Thursday: ["PSIPL", "SS1", "ECL"],
+    Friday: ["EG", "SS1", "BEE", "EG", "UHV"],
+  },
+  H: {
+    Monday: ["SS1", "ECL", "EG", "PSIPL"],
+    Tuesday: ["EG", "BEE", "ECL", "MT"],
+    Wednesday: ["MT", "UHV", "BEE", "EG", "SS1"],
+    Thursday: ["PSIPL", "SS1", "BEE", "EG"],
+    Friday: ["BEE", "MT", "EG", "PSIPL", "ECL", "UHV"],
   },
 };
 
 function SubjectSetup() {
-  const [division, setDivision] = useState("");
+  const [division, setDivision] = useState("");  // Default is an empty string
   const [timetable, setTimetable] = useState([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -52,7 +80,11 @@ function SubjectSetup() {
           const userDoc = await getDoc(userRef);
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            setDivision(userData.division || ""); // Fetch user's division
+            // Ensure division exists or prompt the user to select it
+            if (!userData.division) {
+              setError("Please select a division to continue.");
+            }
+            setDivision(userData.division || "");
           }
         } catch (error) {
           console.error("Error fetching user division: ", error);
@@ -69,49 +101,50 @@ function SubjectSetup() {
       const currentDay = new Date().toLocaleString("en-US", {
         weekday: "long",
       });
-      const divisionTimetable = dummyTimetable[division]?.[currentDay] || [];
+      const divisionTimetable = Timetable[division]?.[currentDay] || [];
       setTimetable(divisionTimetable);
     }
   }, [division]);
 
   const handleDivisionChange = (event) => {
-    setDivision(event.target.value);
-    setError("");
-    setSuccess("");
+    setDivision(event.target.value); // Make sure this updates the state
+    setError(""); // Reset error if a new division is selected
+    setSuccess(""); // Reset success message
   };
 
   const handleSubmit = async () => {
-    const user = auth.currentUser;  // Get the current user
+    if (!division) {
+      setError("Please select a division before proceeding.");
+      return;
+    }
+  
+    const user = auth.currentUser;
     if (user) {
-      const db = getFirestore();  // Initialize Firestore
-      const userRef = doc(db, "users", user.uid);  // Reference to the user's document
+      const db = getFirestore();
+      const userRef = doc(db, "users", user.uid);
   
       try {
-        // Save data to Firestore
         await setDoc(
           userRef,
           {
-            division: division,  // Save the division
-            timetable: timetable, // Save the timetable (subject list)
-            setupCompleted: true   // Indicate that setup is completed
+            division: division,
+            timetable: timetable,
+            setupCompleted: true,
           },
-          { merge: true }  // Merge ensures existing fields are preserved, and only new fields are added
+          { merge: true }
         );
   
-        setSuccess("Division and timetable have been saved successfully!");
-        setError("");  // Clear any previous errors
+        setSuccess("Division and timetable saved successfully!");
   
-        // Redirect to another page after successful save
         setTimeout(() => {
-          navigate("/attendance");  // Redirect to the attendance page
-        }, 1000);  // Wait 1 second before redirecting
+          navigate("/attendance");
+        }, 1000);
       } catch (error) {
         console.error("Error saving data: ", error);
         setError("Error saving data. Please try again.");
       }
     }
   };
-  
 
   return (
     <div className="flex justify-center items-center min-h-[calc(100vh-4rem)]">
@@ -120,16 +153,8 @@ function SubjectSetup() {
           Subject Setup
         </h1>
 
-        {error && (
-          <div className="mb-4 text-red-500 text-center">
-            <span>{error}</span>
-          </div>
-        )}
-        {success && (
-          <div className="mb-4 text-green-500 text-center">
-            <span>{success}</span>
-          </div>
-        )}
+        {error && <div className="mb-4 text-red-500 text-center">{error}</div>}
+        {success && <div className="mb-4 text-green-500 text-center">{success}</div>}
 
         <div className="mb-6">
           <label htmlFor="division" className="block text-lg text-gray-700 mb-2">
@@ -145,30 +170,39 @@ function SubjectSetup() {
             <option value="A">A</option>
             <option value="B">B</option>
             <option value="C">C</option>
+            <option value="D">D</option>
+            <option value="E">E</option>
+            <option value="F">F</option>
+            <option value="G">G</option>
+            <option value="H">H</option>
           </select>
         </div>
 
-        {division && timetable.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-700">
-              Today's Timetable:
+        {division && (
+          <div>
+            <h2 className="text-xl text-gray-800 font-semibold mb-4">
+              Timetable for {division}
             </h2>
-            <ul className="list-disc pl-5 text-gray-700">
-              {timetable.map((subject, index) => (
-                <li key={index}>{subject}</li>
-              ))}
-            </ul>
+            <div>
+              {timetable.length > 0 ? (
+                <ul className="list-disc pl-6">
+                  {timetable.map((subject, index) => (
+                    <li key={index} className="text-gray-700">{subject}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-600">No subjects available for today.</p>
+              )}
+            </div>
           </div>
         )}
 
-        <div className="mb-6">
-          <button
-            onClick={handleSubmit}
-            className="w-full p-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-200"
-          >
-            Save Division
-          </button>
-        </div>
+        <button
+          onClick={handleSubmit}
+          className="w-full p-3 bg-blue-500 text-white font-semibold rounded-lg mt-6"
+        >
+          Submit
+        </button>
       </div>
     </div>
   );

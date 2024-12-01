@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { signInWithPopup, auth, provider } from "../firebase"; // Import Firebase services
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase"; // Import Firestore instance
 
 function SignIn() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  // Initialize the default data for a new user
   const initializeUserData = async (user) => {
     try {
       // Reference to the user's document
@@ -17,23 +18,17 @@ function SignIn() {
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
-        // Default data structure
+        // Default data structure for new users
         const defaultData = {
           attendance: {
-            "2024-12-01": {
-              English: { lab: "Present", theory: "" },
-              History: { lab: "Absent", theory: "Present" },
-              Lab: { lab: "Absent", theory: "Present" },
-              Sports: { lab: "Present", theory: "Present" },
-            },
           },
-          division: "A",
+          division: "",
           setupCompleted: true,
           subjects: {},
-          timetable: ["Math", "Physics", "Chemistry", "English"],
+          timetable: [""],
         };
 
-        // Write the default data to Firestore
+        // Write the default data to Firestore for a new user
         await setDoc(userDocRef, defaultData);
         console.log("User data initialized successfully.");
       } else {
@@ -44,16 +39,33 @@ function SignIn() {
     }
   };
 
+  // Update the user data after they modify their information
+  const updateUserData = async (user, updatedData) => {
+    try {
+      const userDocRef = doc(db, "users", user.uid);
+
+      // Update user data in Firestore
+      await updateDoc(userDocRef, updatedData);
+      console.log("User data updated successfully.");
+    } catch (error) {
+      console.error("Error updating user data:", error);
+    }
+  };
+
+  // Handle Google sign-in and initialize/update user data
   const handleGoogleSignIn = async () => {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Initialize Firestore data
+      // Initialize Firestore data if user is new
       await initializeUserData(user);
 
       console.log("Signed in and user data initialized:", user);
-      navigate("/dashboard"); // Redirect to dashboard after sign-in
+
+      // Navigate to the dashboard after sign-in
+      navigate("/dashboard");
+
     } catch (error) {
       console.error("Error during sign-in:", error);
       setError(error.message); // Display error to the user

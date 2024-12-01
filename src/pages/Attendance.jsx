@@ -4,33 +4,62 @@ import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 // Dummy timetable data (same as in SubjectSetup.jsx)
-const dummyTimetable = {
+const Timetable = {
   A: {
-    Monday: ["Math", "Physics", "Chemistry", "English"],
-    Tuesday: ["Biology", "Math", "History", "PE"],
-    Wednesday: ["Physics", "Chemistry", "English", "CS"],
-    Thursday: ["History", "Biology", "Math", "PE"],
-    Friday: ["CS", "Physics", "Chemistry", "English"],
-    Saturday: ["Math", "Sports", "Lab", "History"],
-    Sunday: ["Sports", "Lab", "English", "History"],
+    Monday: ["PSIPL", "EP", "DS", "TS", "MT"],
+    Tuesday: ["PSIPL", "IKS", "EP", "DS"],
+    Wednesday: ["TS", "MT", "EP", "DS", "ECL", "PSIPL"],
+    Thursday: ["ECL", "DS", "TS", "MT", "EP"],
+    Friday: ["IKS", "EP", "ECL", "MT", "EP", "DS", "TS"],
   },
   B: {
-    Monday: ["English", "History", "PE", "Math"],
-    Tuesday: ["Physics", "Chemistry", "CS", "Biology"],
-    Wednesday: ["Math", "PE", "History", "English"],
-    Thursday: ["CS", "Biology", "Physics", "Chemistry"],
-    Friday: ["Math", "English", "PE", "History"],
-    Saturday: ["Lab", "Sports", "Math", "Physics"],
-    Sunday: ["Physics", "Chemistry", "English", "CS"],
+    Monday: ["EP", "DS", "ECL", "IKS", "MT"],
+    Tuesday: ["DS", "TS", "EP", "IKS", "ECL", "DS"],
+    Wednesday: ["PSIPL", "DS", "TS", "PSIPL", "MT"],
+    Thursday: ["PSIPL", "EP", "ECL", "TS"],
+    Friday: ["TS", "MT", "EP", "DS"],
   },
   C: {
-    Monday: ["CS", "Physics", "Biology", "Math"],
-    Tuesday: ["Chemistry", "English", "History", "PE"],
-    Wednesday: ["Math", "Biology", "Physics", "CS"],
-    Thursday: ["PE", "History", "Chemistry", "English"],
-    Friday: ["Biology", "Math", "Physics", "CS"],
-    Saturday: ["Sports", "Lab", "English", "History"],
-    Sunday: ["Math", "Sports", "Lab", "History"],
+    Monday: ["EC", "DS", "TS", "PSIPL"],
+    Tuesday: ["DS", "EC", "MT", "ECL", "IKS", "TS"],
+    Wednesday: ["TS", "MT", "EC", "DS", "IKS", "EC"],
+    Thursday: ["ECL", "DS", "MT"],
+    Friday: ["EC", "ECL", "PSIPL", "TS", "EC"],
+  },
+  D: {
+    Monday: ["ECL", "DS", "TS", "MT"],
+    Tuesday: ["DS", "TS", "EC", "IKS", "PSIPL"],
+    Wednesday: ["MT", "EC", "DS", "ECL", "IKS", "TS"],
+    Thursday: ["MT", "EC", "DS", "TS", "PSIPL"],
+    Friday: ["ECL", "EC", "PSIPL", "MT"],
+  },
+  E: {
+    Monday: ["EM", "BEE", "SS1", "ECL"],
+    Tuesday: ["EM", "BEE", "SS1", "ECL", "PSIPL"],
+    Wednesday: ["SS1", "MT", "EM", "BEE", "PSIPL"],
+    Thursday: ["BEE", "SS1", "EM", "ECL", "UHV", "MT"],
+    Friday: ["PSIPL", "UHV", "EM", "MT"],
+  },
+  F: {
+    Monday: ["ECL", "PSIPL", "BEE", "SS1", "MT"],
+    Tuesday: ["ECL", "UHV", "PSIPL", "SS1", "BEE"],
+    Wednesday: ["BEE", "PSIPL", "SS1", "MT", "EM"],
+    Thursday: ["EM", "BEE", "ECL", "BEE", "SS1", "MT"],
+    Friday: ["EM", "UHV", "MT", "SS1"],
+  },
+  G: {
+    Monday: ["EG", "BEE", "SS1", "ECL", "MT"],
+    Tuesday: ["EG", "PSIPL", "UHV", "BEE", "MT"],
+    Wednesday: ["BEE", "SS1", "EG", "ECL", "MT"],
+    Thursday: ["PSIPL", "SS1", "ECL"],
+    Friday: ["EG", "SS1", "BEE", "EG", "UHV"],
+  },
+  H: {
+    Monday: ["SS1", "ECL", "EG", "PSIPL"],
+    Tuesday: ["EG", "BEE", "ECL", "MT"],
+    Wednesday: ["MT", "UHV", "BEE", "EG", "SS1"],
+    Thursday: ["PSIPL", "SS1", "BEE", "EG"],
+    Friday: ["BEE", "MT", "EG", "PSIPL", "ECL", "UHV"],
   },
 };
 
@@ -50,8 +79,8 @@ function AttendancePage() {
   };
 
   // Function to get subjects for a specific day
-  const getSubjectsForDay = (division, day) => {
-    return dummyTimetable[division]?.[day] || [];
+  const getSubjectsForDay = (division, currentDay) => {
+    return Timetable[division]?.[currentDay] || [];
   };
 
   useEffect(() => {
@@ -60,24 +89,23 @@ function AttendancePage() {
       if (user) {
         const db = getFirestore();
         const userRef = doc(db, "users", user.uid);
-
+  
         try {
           const userDoc = await getDoc(userRef);
           if (userDoc.exists()) {
             const userData = userDoc.data();
             const userDivision = userData.division || "";
             setDivision(userDivision);
-
-            // Set the date to today by default
+  
+            console.log("User division:", userDivision); // Check division here
+            
             const today = new Date().toISOString().split('T')[0];
             setDate(today);
-
-            // Get subjects for the current day
+  
             const currentDay = getCurrentDay();
             const currentDaySubjects = getSubjectsForDay(userDivision, currentDay);
             setTimetable(currentDaySubjects);
-
-            // Initialize attendance data for current day subjects
+  
             const initialAttendanceData = {};
             currentDaySubjects.forEach((subject) => {
               initialAttendanceData[subject] = {
@@ -87,7 +115,7 @@ function AttendancePage() {
             });
             setAttendanceData(initialAttendanceData);
             setSubjects(currentDaySubjects);
-
+  
             setIsLoaded(true);
           }
         } catch (error) {
@@ -96,18 +124,16 @@ function AttendancePage() {
         }
       }
     };
-
+  
     fetchUserDivisionAndTimetable();
-  }, []); // Empty dependency array to run only once on component mount
+  }, []); // Empty dependency array to run only once on component mount  
 
   useEffect(() => {
-    // This effect runs when the date changes
     if (division && date) {
       const selectedDay = new Date(date).toLocaleString("en-US", { weekday: "long" });
       const daySubjects = getSubjectsForDay(division, selectedDay);
       setTimetable(daySubjects);
-
-      // Reinitialize attendance data for the selected day
+  
       const initialAttendanceData = {};
       daySubjects.forEach((subject) => {
         initialAttendanceData[subject] = {
@@ -119,6 +145,7 @@ function AttendancePage() {
       setSubjects(daySubjects);
     }
   }, [date, division]);
+  
 
   const handleAttendanceChange = (subject, type, value) => {
     setAttendanceData((prev) => ({
