@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Loader2, CalendarIcon } from 'lucide-react'
+import { Loader2, CalendarIcon, CheckCircle, XCircle } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { format } from "date-fns"
 
 import { getDivisionTimetable } from "../config/timetable"
 
@@ -129,8 +130,8 @@ function AttendancePage() {
       setSuccess("Attendance saved successfully!")
 
       setTimeout(() => {
-        navigate("/dashboard")
-      }, 1500)
+        setSuccess("")
+      }, 3000)
     } catch (error) {
       setError("Failed to save attendance. Please try again.")
     } finally {
@@ -155,7 +156,7 @@ function AttendancePage() {
               <CardTitle className="text-2xl font-bold">Daily Attendance</CardTitle>
               <CardDescription className="flex items-center mt-1">
                 <CalendarIcon className="h-4 w-4 mr-2" />
-                {getCurrentDay}, {date.toLocaleDateString()}
+                {format(date, "EEEE, MMMM d, yyyy")}
               </CardDescription>
             </div>
           </div>
@@ -176,12 +177,7 @@ function AttendancePage() {
 
           <div className="grid sm:grid-cols-[280px,1fr] gap-6">
             <div className="space-y-4">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                className="rounded-md border w-full"
-              />
+              <Calendar mode="single" selected={date} onSelect={setDate} className="rounded-md border w-full justify-center flex" />
             </div>
 
             {!division || !batch ? (
@@ -194,14 +190,14 @@ function AttendancePage() {
               </div>
             ) : (
               <Card>
-                <ScrollArea className="h-[500px] rounded-md">
+                <ScrollArea className="h-min rounded-md">
                   {timetable.length > 0 ? (
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[200px] text-center">Subject</TableHead>
-                          <TableHead className="text-center">Theory</TableHead>
-                          <TableHead className="text-center">Lab</TableHead>
+                          <TableHead className="w-[150px] text-center">Subject</TableHead>
+                          <TableHead className="w-[150px] text-center">Theory</TableHead>
+                          <TableHead className="w-[150px] text-center">Lab</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -220,12 +216,17 @@ function AttendancePage() {
                                       "w-full sm:w-24",
                                       attendanceData[subject]?.theory === value
                                         ? value === "Present"
-                                          ? "bg-primary text-primary-foreground"
-                                          : "bg-destructive text-destructive-foreground"
+                                          ? "bg-green-500 hover:bg-green-600"
+                                          : "bg-red-500 hover:bg-red-600"
                                         : "",
                                     )}
                                     disabled={type !== "theory"}
                                   >
+                                    {value === "Present" ? (
+                                      <CheckCircle className="w-4 h-4 mr-2" />
+                                    ) : (
+                                      <XCircle className="w-4 h-4 mr-2" />
+                                    )}
                                     {value}
                                   </Button>
                                 ))}
@@ -243,12 +244,17 @@ function AttendancePage() {
                                       "w-full sm:w-24",
                                       attendanceData[subject]?.lab === value
                                         ? value === "Present"
-                                          ? "bg-primary text-primary-foreground"
-                                          : "bg-destructive text-destructive-foreground"
+                                          ? "bg-green-500 hover:bg-green-600"
+                                          : "bg-red-500 hover:bg-red-600"
                                         : "",
                                     )}
                                     disabled={type !== "lab"}
                                   >
+                                    {value === "Present" ? (
+                                      <CheckCircle className="w-4 h-4 mr-2" />
+                                    ) : (
+                                      <XCircle className="w-4 h-4 mr-2" />
+                                    )}
                                     {value}
                                   </Button>
                                 ))}
@@ -291,3 +297,4 @@ function AttendancePage() {
 }
 
 export default AttendancePage
+
