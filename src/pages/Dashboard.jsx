@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { auth, db } from "../firebase"
 import { doc, onSnapshot } from "firebase/firestore"
-import { ErrorBoundary } from "react-error-boundary"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, FileDown } from "lucide-react"
+import { Loader2, FileDown } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -13,13 +12,7 @@ import { Button } from "@/components/ui/button"
 import { PDFDownloadLink } from "@react-pdf/renderer"
 import AttendanceReport from "../components/AttendanceReport"
 
-import { Divisions, AllSubjects, hasSubject, getDivisionTimetable } from "../config/timetable"
-
-const ErrorFallback = ({ error }) => (
-  <Alert variant="destructive">
-    <AlertDescription>Something went wrong: {error.message}</AlertDescription>
-  </Alert>
-)
+import { AllSubjects, hasSubject, getDivisionTimetable } from "../config/timetable"
 
 const AttendanceCard = ({ subject, theoryPercentage, labPercentage, theoryTotal, labTotal }) => (
   <Card>
@@ -108,10 +101,7 @@ const Dashboard = () => {
 
       Object.entries(dailyRecord).forEach(([subject, { theory, lab }]) => {
         if (semesterStats[subject]) {
-          const dayOfWeek = new Date(date).toLocaleString("en-US", { weekday: "long" })
-          const dayTimetable = getDivisionTimetable(division, batch, dayOfWeek)
-
-          if (theory !== undefined) {
+          if (theory) {
             semesterStats[subject].theory.total++
             monthlyStats[monthKey][subject].theory.total++
             if (theory === "Present") {
@@ -120,7 +110,7 @@ const Dashboard = () => {
             }
           }
 
-          if (lab !== undefined) {
+          if (lab) {
             semesterStats[subject].lab.total++
             monthlyStats[monthKey][subject].lab.total++
             if (lab === "Present") {
@@ -149,6 +139,8 @@ const Dashboard = () => {
           defaulters[subject] = {
             theory: theoryPercentage < 75,
             lab: labPercentage < 100,
+            theoryPercentage,
+            labPercentage,
             theoryTotal: data.theory.total,
             labTotal: data.lab.total,
           }
@@ -171,148 +163,145 @@ const Dashboard = () => {
   const defaulters = detectDefaulters(semesterStats)
 
   return (
-    <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <div className="container mx-auto py-6">
-        <Card className="w-full">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="text-2xl font-bold">Attendance Dashboard</CardTitle>
-                <CardDescription>Track and analyze your attendance across subjects</CardDescription>
-              </div>
-              <PDFDownloadLink
-                document={
-                  <AttendanceReport
-                    attendanceData={semesterStats}
-                    userInfo={{
-                      name: auth.currentUser?.displayName || "Student Name",
-                      email: auth.currentUser?.email || "student@example.com",
-                      division,
-                      batch,
-                    }}
-                    defaulters={defaulters}
-                  />
-                }
-                fileName="attendance_report.pdf"
-              >
-                {({ blob, url, loading, error }) => (
-                  <Button disabled={loading}>
-                    {loading ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <FileDown className="mr-2 h-4 w-4" />
-                    )}
-                    {loading ? "Generating..." : "Download Report"}
-                  </Button>
-                )}
-              </PDFDownloadLink>
+    <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <Card className="w-full">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle className="text-2xl font-bold">Attendance Dashboard</CardTitle>
+              <CardDescription>Track and analyze your attendance across subjects</CardDescription>
             </div>
-          </CardHeader>
-          <CardContent>
-            {error ? (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : (
-              <Tabs defaultValue="overview" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                  <TabsTrigger value="defaulters">Defaulters</TabsTrigger>
-                </TabsList>
+            <PDFDownloadLink
+              document={
+                <AttendanceReport
+                  attendanceData={semesterStats}
+                  userInfo={{
+                    name: auth.currentUser?.displayName || "Student Name",
+                    email: auth.currentUser?.email || "student@example.com",
+                    division,
+                    batch,
+                  }}
+                  defaulters={defaulters}
+                />
+              }
+              fileName="attendance_report.pdf"
+            >
+              {({ blob, url, loading, error }) => (
+                <Button disabled={loading}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileDown className="mr-2 h-4 w-4" />}
+                  {loading ? "Generating..." : "Download Report"}
+                </Button>
+              )}
+            </PDFDownloadLink>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : (
+            <Tabs defaultValue="overview" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="defaulters">Defaulters</TabsTrigger>
+              </TabsList>
 
-                <TabsContent value="overview" className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {Object.entries(semesterStats).map(([subject, stats]) => (
-                      <AttendanceCard
-                        key={subject}
-                        subject={subject}
-                        theoryPercentage={calculatePercentage(stats.theory.present, stats.theory.total)}
-                        labPercentage={calculatePercentage(stats.lab.present, stats.lab.total)}
-                        theoryTotal={stats.theory.total}
-                        labTotal={stats.lab.total}
-                      />
-                    ))}
-                  </div>
-                </TabsContent>
+              <TabsContent value="overview" className="space-y-6">
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {Object.entries(semesterStats).map(([subject, stats]) => (
+                    <AttendanceCard
+                      key={subject}
+                      subject={subject}
+                      theoryPercentage={calculatePercentage(stats.theory.present, stats.theory.total)}
+                      labPercentage={calculatePercentage(stats.lab.present, stats.lab.total)}
+                      theoryTotal={stats.theory.total}
+                      labTotal={stats.lab.total}
+                    />
+                  ))}
+                </div>
+              </TabsContent>
 
-                <TabsContent value="monthly" className="space-y-6">
-                  {Object.entries(monthlyStats).map(([month, stats]) => (
-                    <Card key={month}>
-                      <CardHeader>
-                        <CardTitle>{month}</CardTitle>
-                      </CardHeader>
-                      <CardContent>
+              <TabsContent value="monthly" className="space-y-6">
+                {Object.entries(monthlyStats).map(([month, stats]) => (
+                  <Card key={month}>
+                    <CardHeader>
+                      <CardTitle>{month}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="h-[300px]">
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Subject</TableHead>
-                              <TableHead>Theory Attendance</TableHead>
-                              <TableHead>Lab Attendance</TableHead>
-                              <TableHead>Theory Total</TableHead>
-                              <TableHead>Lab Total</TableHead>
+                              <TableHead className="text-center">Subject</TableHead>
+                              <TableHead className="text-center">Theory Attendance</TableHead>
+                              <TableHead className="text-center">Lab Attendance</TableHead>
+                              <TableHead className="text-center">Theory Total</TableHead>
+                              <TableHead className="text-center">Lab Total</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {Object.entries(stats).map(([subject, data]) => (
-                              <TableRow key={subject}>
-                                <TableCell>{subject}</TableCell>
-                                <TableCell>
+                              <TableRow key={subject} className="text-center">
+                                <TableCell className="text-center">{subject}</TableCell>
+                                <TableCell className="text-center">
                                   {calculatePercentage(data.theory.present, data.theory.total).toFixed(2)}%
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="text-center">
                                   {calculatePercentage(data.lab.present, data.lab.total).toFixed(2)}%
                                 </TableCell>
-                                <TableCell>{data.theory.total}</TableCell>
-                                <TableCell>{data.lab.total}</TableCell>
+                                <TableCell className="text-center">{data.theory.total}</TableCell>
+                                <TableCell className="text-center">{data.lab.total}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
                         </Table>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </TabsContent>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                ))}
+              </TabsContent>
 
-                <TabsContent value="defaulters" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Defaulters List</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+              <TabsContent value="defaulters" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Defaulters List</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[300px]">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Subject</TableHead>
-                            <TableHead>Theory</TableHead>
-                            <TableHead>Lab</TableHead>
-                            <TableHead>Theory Total</TableHead>
-                            <TableHead>Lab Total</TableHead>
+                            <TableHead className="text-center">Subject</TableHead>
+                            <TableHead className="text-center">Theory</TableHead>
+                            <TableHead className="text-center">Lab</TableHead>
+                            <TableHead className="text-center">Theory Total</TableHead>
+                            <TableHead className="text-center">Lab Total</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {Object.entries(defaulters).map(([subject, data]) => (
                             <TableRow key={subject}>
-                              <TableCell>{subject}</TableCell>
-                              <TableCell>{data.theory ? "Defaulter" : "OK"}</TableCell>
-                              <TableCell>{data.lab ? "Defaulter" : "OK"}</TableCell>
-                              <TableCell>{data.theoryTotal}</TableCell>
-                              <TableCell>{data.labTotal}</TableCell>
+                              <TableCell className="text-center">{subject}</TableCell>
+                              <TableCell className="text-center">{data.theory ? `${data.theoryPercentage.toFixed(2)}%` : "OK"}</TableCell>
+                              <TableCell className="text-center">{data.lab ? `${data.labPercentage.toFixed(2)}%` : "OK"}</TableCell>
+                              <TableCell className="text-center">{data.theoryTotal}</TableCell>
+                              <TableCell className="text-center">{data.labTotal}</TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
                       </Table>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </ErrorBoundary>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 
 export default Dashboard
-

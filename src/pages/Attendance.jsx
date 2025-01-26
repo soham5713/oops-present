@@ -177,7 +177,12 @@ function AttendancePage() {
 
           <div className="grid sm:grid-cols-[280px,1fr] gap-6">
             <div className="space-y-4">
-              <Calendar mode="single" selected={date} onSelect={setDate} className="rounded-md border w-full justify-center flex" />
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(newDate) => setDate(newDate || new Date())}
+                className="rounded-md border w-full justify-center flex"
+              />
             </div>
 
             {!division || !batch ? (
