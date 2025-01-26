@@ -224,78 +224,80 @@ const Dashboard = () => {
               </TabsContent>
 
               <TabsContent value="monthly" className="space-y-6">
-                {Object.entries(monthlyStats).map(([month, stats]) => (
-                  <Card key={month}>
-                    <CardHeader>
-                      <CardTitle>{month}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ScrollArea className="h-[300px]">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-center">Subject</TableHead>
-                              <TableHead className="text-center">Theory Attendance</TableHead>
-                              <TableHead className="text-center">Lab Attendance</TableHead>
-                              <TableHead className="text-center">Theory Total</TableHead>
-                              <TableHead className="text-center">Lab Total</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {Object.entries(stats).map(([subject, data]) => (
-                              <TableRow key={subject} className="text-center">
-                                <TableCell className="text-center">{subject}</TableCell>
-                                <TableCell className="text-center">
-                                  {calculatePercentage(data.theory.present, data.theory.total).toFixed(2)}%
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  {calculatePercentage(data.lab.present, data.lab.total).toFixed(2)}%
-                                </TableCell>
-                                <TableCell className="text-center">{data.theory.total}</TableCell>
-                                <TableCell className="text-center">{data.lab.total}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
+  <div className="max-h-[70vh] overflow-y-auto">
+    {Object.entries(monthlyStats).map(([month, stats]) => (
+      <Card key={month} className="mb-4">
+        <CardHeader>
+          <CardTitle>{month}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-center">Subject</TableHead>
+                  <TableHead className="text-center">Theory Attendance</TableHead>
+                  <TableHead className="text-center">Lab Attendance</TableHead>
+                  <TableHead className="text-center">Theory Total</TableHead>
+                  <TableHead className="text-center">Lab Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(stats).map(([subject, data]) => (
+                  <TableRow key={subject} className="text-center">
+                    <TableCell className="text-center">{subject}</TableCell>
+                    <TableCell className="text-center">
+                      {calculatePercentage(data.theory.present, data.theory.total).toFixed(2)}%
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {calculatePercentage(data.lab.present, data.lab.total).toFixed(2)}%
+                    </TableCell>
+                    <TableCell className="text-center">{data.theory.total}</TableCell>
+                    <TableCell className="text-center">{data.lab.total}</TableCell>
+                  </TableRow>
                 ))}
-              </TabsContent>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    ))}
+  </div>
+</TabsContent>
 
-              <TabsContent value="defaulters" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Defaulters List</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="h-[300px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-center">Subject</TableHead>
-                            <TableHead className="text-center">Theory</TableHead>
-                            <TableHead className="text-center">Lab</TableHead>
-                            <TableHead className="text-center">Theory Total</TableHead>
-                            <TableHead className="text-center">Lab Total</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {Object.entries(defaulters).map(([subject, data]) => (
-                            <TableRow key={subject}>
-                              <TableCell className="text-center">{subject}</TableCell>
-                              <TableCell className="text-center">{data.theory ? `${data.theoryPercentage.toFixed(2)}%` : "OK"}</TableCell>
-                              <TableCell className="text-center">{data.lab ? `${data.labPercentage.toFixed(2)}%` : "OK"}</TableCell>
-                              <TableCell className="text-center">{data.theoryTotal}</TableCell>
-                              <TableCell className="text-center">{data.labTotal}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+<TabsContent value="defaulters" className="space-y-6">
+  <Card>
+    <CardHeader>
+      <CardTitle>Defaulters List</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="max-h-[70vh] overflow-y-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-center">Subject</TableHead>
+              <TableHead className="text-center">Theory</TableHead>
+              <TableHead className="text-center">Lab</TableHead>
+              <TableHead className="text-center">Theory Total</TableHead>
+              <TableHead className="text-center">Lab Total</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Object.entries(defaulters).map(([subject, data]) => (
+              <TableRow key={subject}>
+                <TableCell className="text-center">{subject}</TableCell>
+                <TableCell className="text-center">{data.theory ? `${data.theoryPercentage.toFixed(2)}%` : "OK"}</TableCell>
+                <TableCell className="text-center">{data.lab ? `${data.labPercentage.toFixed(2)}%` : "OK"}</TableCell>
+                <TableCell className="text-center">{data.theoryTotal}</TableCell>
+                <TableCell className="text-center">{data.labTotal}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </CardContent>
+  </Card>
+</TabsContent>
             </Tabs>
           )}
         </CardContent>
