@@ -4,13 +4,14 @@ import { doc, onSnapshot } from "firebase/firestore"
 import { ErrorBoundary } from "react-error-boundary"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2 } from 'lucide-react'
+import { Loader2, FileDown } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
+import { PDFDownloadLink } from "@react-pdf/renderer"
+import AttendanceReport from "../components/AttendanceReport"
 
 import { Divisions, AllSubjects, hasSubject, getDivisionTimetable } from "../config/timetable"
 
@@ -138,19 +139,6 @@ const Dashboard = () => {
     return total > 0 ? (present / total) * 100 : 0
   }, [])
 
-  const prepareChartData = useCallback(
-    (stats) => {
-      return Object.entries(stats).map(([subject, data]) => ({
-        subject,
-        theoryAttendance: calculatePercentage(data.theory.present, data.theory.total),
-        labAttendance: calculatePercentage(data.lab.present, data.lab.total),
-        theoryTotal: data.theory.total,
-        labTotal: data.lab.total,
-      }))
-    },
-    [calculatePercentage],
-  )
-
   const detectDefaulters = useCallback(
     (stats) => {
       const defaulters = {}
@@ -180,7 +168,6 @@ const Dashboard = () => {
   }
 
   const { semesterStats, monthlyStats } = calculateAttendance()
-  const semesterChartData = prepareChartData(semesterStats)
   const defaulters = detectDefaulters(semesterStats)
 
   return (
@@ -188,8 +175,38 @@ const Dashboard = () => {
       <div className="container mx-auto py-6">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle className="text-2xl font-bold">Attendance Dashboard</CardTitle>
-            <CardDescription>Track and analyze your attendance across subjects</CardDescription>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl font-bold">Attendance Dashboard</CardTitle>
+                <CardDescription>Track and analyze your attendance across subjects</CardDescription>
+              </div>
+              <PDFDownloadLink
+                document={
+                  <AttendanceReport
+                    attendanceData={semesterStats}
+                    userInfo={{
+                      name: auth.currentUser?.displayName || "Student Name",
+                      email: auth.currentUser?.email || "student@example.com",
+                      division,
+                      batch,
+                    }}
+                    defaulters={defaulters}
+                  />
+                }
+                fileName="attendance_report.pdf"
+              >
+                {({ blob, url, loading, error }) => (
+                  <Button disabled={loading}>
+                    {loading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileDown className="mr-2 h-4 w-4" />
+                    )}
+                    {loading ? "Generating..." : "Download Report"}
+                  </Button>
+                )}
+              </PDFDownloadLink>
+            </div>
           </CardHeader>
           <CardContent>
             {error ? (
@@ -298,3 +315,4 @@ const Dashboard = () => {
 }
 
 export default Dashboard
+
