@@ -1,277 +1,275 @@
-import React, { useState, useEffect } from "react";
-import { auth } from "../firebase";
-import { getFirestore, doc, getDoc, updateDoc } from "firebase/firestore";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react"
+import { auth } from "../firebase"
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore"
+import { useNavigate } from "react-router-dom"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Loader2, CalendarIcon } from "lucide-react"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
 
-// Dummy timetable data (same as in SubjectSetup.jsx)
-const Timetable = {
-  A: {
-    Monday: ["PSIPL", "EP", "DS", "TS", "MT"],
-    Tuesday: ["PSIPL", "IKS", "EP", "DS"],
-    Wednesday: ["TS", "MT", "EP", "DS", "ECL", "PSIPL"],
-    Thursday: ["ECL", "DS", "TS", "MT", "EP"],
-    Friday: ["IKS", "EP", "ECL", "MT", "EP", "DS", "TS"],
-  },
-  B: {
-    Monday: ["EP", "DS", "ECL", "IKS", "MT"],
-    Tuesday: ["DS", "TS", "EP", "IKS", "ECL", "DS"],
-    Wednesday: ["PSIPL", "DS", "TS", "PSIPL", "MT"],
-    Thursday: ["PSIPL", "EP", "ECL", "TS"],
-    Friday: ["TS", "MT", "EP", "DS"],
-  },
-  C: {
-    Monday: ["EC", "DS", "TS", "PSIPL"],
-    Tuesday: ["DS", "EC", "MT", "ECL", "IKS", "TS"],
-    Wednesday: ["TS", "MT", "EC", "DS", "IKS", "EC"],
-    Thursday: ["ECL", "DS", "MT"],
-    Friday: ["EC", "ECL", "PSIPL", "TS", "EC"],
-  },
-  D: {
-    Monday: ["ECL", "DS", "TS", "MT"],
-    Tuesday: ["DS", "TS", "EC", "IKS", "PSIPL"],
-    Wednesday: ["MT", "EC", "DS", "ECL", "IKS", "TS"],
-    Thursday: ["MT", "EC", "DS", "TS", "PSIPL"],
-    Friday: ["ECL", "EC", "PSIPL", "MT"],
-  },
-  E: {
-    Monday: ["EM", "BEE", "SS1", "ECL"],
-    Tuesday: ["EM", "BEE", "SS1", "ECL", "PSIPL"],
-    Wednesday: ["SS1", "MT", "EM", "BEE", "PSIPL"],
-    Thursday: ["BEE", "SS1", "EM", "ECL", "UHV", "MT"],
-    Friday: ["PSIPL", "UHV", "EM", "MT"],
-  },
-  F: {
-    Monday: ["ECL", "PSIPL", "BEE", "SS1", "MT"],
-    Tuesday: ["ECL", "UHV", "PSIPL", "SS1", "BEE"],
-    Wednesday: ["BEE", "PSIPL", "SS1", "MT", "EM"],
-    Thursday: ["EM", "BEE", "ECL", "BEE", "SS1", "MT"],
-    Friday: ["EM", "UHV", "MT", "SS1"],
-  },
-  G: {
-    Monday: ["EG", "BEE", "SS1", "ECL", "MT"],
-    Tuesday: ["EG", "PSIPL", "UHV", "BEE", "MT"],
-    Wednesday: ["BEE", "SS1", "EG", "ECL", "MT"],
-    Thursday: ["PSIPL", "SS1", "ECL"],
-    Friday: ["EG", "SS1", "BEE", "EG", "UHV"],
-  },
-  H: {
-    Monday: ["SS1", "ECL", "EG", "PSIPL"],
-    Tuesday: ["EG", "BEE", "ECL", "MT"],
-    Wednesday: ["MT", "UHV", "BEE", "EG", "SS1"],
-    Thursday: ["PSIPL", "SS1", "BEE", "EG"],
-    Friday: ["BEE", "MT", "EG", "PSIPL", "ECL", "UHV"],
-  },
-};
+import { getDivisionTimetable } from "../config/timetable"
 
 function AttendancePage() {
-  const [subjects, setSubjects] = useState([]);
-  const [attendanceData, setAttendanceData] = useState({});
-  const [date, setDate] = useState("");
-  const [division, setDivision] = useState("");
-  const [timetable, setTimetable] = useState([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
+  const [attendanceData, setAttendanceData] = useState({})
+  const [date, setDate] = useState(new Date())
+  const [division, setDivision] = useState("")
+  const [batch, setBatch] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [isSaving, setIsSaving] = useState(false) // Added isSaving state
+  const navigate = useNavigate()
 
-  // Function to get the current day
-  const getCurrentDay = () => {
-    return new Date().toLocaleString("en-US", { weekday: "long" });
-  };
+  const getCurrentDay = useMemo(() => {
+    return date.toLocaleString("en-US", { weekday: "long" })
+  }, [date])
 
-  // Function to get subjects for a specific day
-  const getSubjectsForDay = (division, currentDay) => {
-    return Timetable[division]?.[currentDay] || [];
-  };
+  const timetable = useMemo(() => {
+    return division && batch ? getDivisionTimetable(division, batch, getCurrentDay) : []
+  }, [division, batch, getCurrentDay])
 
   useEffect(() => {
-    const fetchUserDivisionAndTimetable = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        const db = getFirestore();
-        const userRef = doc(db, "users", user.uid);
-  
-        try {
-          const userDoc = await getDoc(userRef);
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            const userDivision = userData.division || "";
-            setDivision(userDivision);
-  
-            console.log("User division:", userDivision); // Check division here
-            
-            const today = new Date().toISOString().split('T')[0];
-            setDate(today);
-  
-            const currentDay = getCurrentDay();
-            const currentDaySubjects = getSubjectsForDay(userDivision, currentDay);
-            setTimetable(currentDaySubjects);
-  
-            const initialAttendanceData = {};
-            currentDaySubjects.forEach((subject) => {
-              initialAttendanceData[subject] = {
-                theory: userData.attendance?.[today]?.[subject]?.theory || "",
-                lab: userData.attendance?.[today]?.[subject]?.lab || "",
-              };
-            });
-            setAttendanceData(initialAttendanceData);
-            setSubjects(currentDaySubjects);
-  
-            setIsLoaded(true);
-          }
-        } catch (error) {
-          console.error("Error fetching user data: ", error);
-          setError("Error fetching data. Please try again later.");
+    const fetchUserData = async () => {
+      try {
+        const user = auth.currentUser
+        if (!user) {
+          navigate("/signin")
+          return
         }
-      }
-    };
-  
-    fetchUserDivisionAndTimetable();
-  }, []); // Empty dependency array to run only once on component mount  
 
-  useEffect(() => {
-    if (division && date) {
-      const selectedDay = new Date(date).toLocaleString("en-US", { weekday: "long" });
-      const daySubjects = getSubjectsForDay(division, selectedDay);
-      setTimetable(daySubjects);
-  
-      const initialAttendanceData = {};
-      daySubjects.forEach((subject) => {
-        initialAttendanceData[subject] = {
-          theory: "",
-          lab: "",
-        };
-      });
-      setAttendanceData(initialAttendanceData);
-      setSubjects(daySubjects);
+        const db = getFirestore()
+        const userRef = doc(db, "users", user.uid)
+        const userDoc = await getDoc(userRef)
+
+        if (userDoc.exists()) {
+          const userData = userDoc.data()
+          setDivision(userData.division || "")
+          setBatch(userData.batch || "")
+
+          const dateStr = date.toISOString().split("T")[0]
+          const storedAttendance = userData.attendance?.[dateStr] || {}
+
+          const initialAttendanceData = {}
+          timetable.forEach(({ subject, type }) => {
+            initialAttendanceData[subject] = {
+              ...initialAttendanceData[subject],
+              [type]: storedAttendance[subject]?.[type] || "",
+            }
+          })
+
+          setAttendanceData(initialAttendanceData)
+        }
+      } catch (error) {
+        console.error("Error:", error)
+        setError(error.message || "Failed to load attendance data")
+      } finally {
+        setIsLoading(false)
+      }
     }
-  }, [date, division]);
-  
+
+    fetchUserData()
+  }, [date, navigate, timetable])
 
   const handleAttendanceChange = (subject, type, value) => {
     setAttendanceData((prev) => ({
       ...prev,
-      [subject]: { ...prev[subject], [type]: value },
-    }));
-  };
+      [subject]: {
+        ...prev[subject],
+        [type]: value === prev[subject]?.[type] ? "" : value,
+      },
+    }))
+  }
 
   const saveAttendance = async () => {
-    if (!date) {
-      alert("Please select a date for attendance!");
-      return;
+    // Updated saveAttendance function
+    if (!division || !batch) {
+      setError("Please select your division and batch first")
+      return
     }
 
-    const user = auth.currentUser;
-    if (user) {
-      const db = getFirestore();
-      const docRef = doc(db, "users", user.uid);
+    setIsSaving(true)
+    try {
+      const user = auth.currentUser
+      if (!user) throw new Error("User not authenticated")
 
-      try {
-        const docSnap = await getDoc(docRef);
-        const userData = docSnap.exists() ? docSnap.data() : {};
-        const updatedAttendance = userData.attendance || {};
+      const db = getFirestore()
+      const docRef = doc(db, "users", user.uid)
+      const dateStr = date.toISOString().split("T")[0]
 
-        // Update attendance for the selected date
-        updatedAttendance[date] = attendanceData;
+      const docSnap = await getDoc(docRef)
+      if (!docSnap.exists()) throw new Error("User document not found")
 
-        await updateDoc(docRef, { attendance: updatedAttendance });
-        alert("Attendance saved successfully!");
-
-        // Redirect to the dashboard
-        navigate("/dashboard");
-      } catch (error) {
-        console.error("Error saving attendance:", error);
+      const userData = docSnap.data()
+      const updatedAttendance = {
+        ...userData.attendance,
+        [dateStr]: attendanceData,
       }
+
+      await setDoc(
+        docRef,
+        {
+          attendance: updatedAttendance,
+          lastUpdated: new Date().toISOString(),
+        },
+        { merge: true },
+      )
+
+      navigate("/dashboard")
+    } catch (error) {
+      console.error("Error saving attendance:", error)
+      setError("Failed to save attendance. Please try again.")
+    } finally {
+      setIsSaving(false)
     }
-  };
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
-    <div className="flex justify-center items-center min-h-[90vh] p-4">
-      <div className="bg-white p-6 md:p-8 rounded-xl shadow-lg w-full max-w-3xl mt-5 mb-5">
-        <h1 className="text-2xl md:text-3xl font-semibold text-center text-gray-800 mb-6">
-          Attendance Tracker
-        </h1>
-
-        {error && (
-          <div className="mb-4 text-red-500 text-center">
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Date Selection */}
-        <div className="mb-6">
-          <label htmlFor="date" className="block text-lg text-gray-700 mb-2">
-            Select Date
-          </label>
-          <input
-            id="date"
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Timetable and Attendance Input */}
-        {isLoaded && division && timetable.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-xl font-semibold text-gray-700">
-              {new Date(date).toLocaleString("en-US", { weekday: "long" })}'s Timetable:
-            </h2>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="font-semibold">Subject</div>
-              <div className="font-semibold">Theory</div>
-              <div className="font-semibold">Lab</div>
-              {timetable.map((subject, index) => (
-                <React.Fragment key={index}>
-                  <div>{subject}</div>
-                  <div className="flex space-x-4">
-                    {/* Theory Attendance */}
-                    <button
-                      onClick={() => handleAttendanceChange(subject, "theory", "Present")}
-                      className={`w-20 py-2 rounded-lg text-white ${attendanceData[subject]?.theory === "Present" ? "bg-green-500" : "bg-gray-300"}`}
-                    >
-                      Present
-                    </button>
-                    <button
-                      onClick={() => handleAttendanceChange(subject, "theory", "Absent")}
-                      className={`w-20 py-2 rounded-lg text-white ${attendanceData[subject]?.theory === "Absent" ? "bg-red-500" : "bg-gray-300"}`}
-                    >
-                      Absent
-                    </button>
-                  </div>
-                  <div className="flex space-x-4">
-                    {/* Lab Attendance */}
-                    <button
-                      onClick={() => handleAttendanceChange(subject, "lab", "Present")}
-                      className={`w-20 py-2 rounded-lg text-white ${attendanceData[subject]?.lab === "Present" ? "bg-green-500" : "bg-gray-300"}`}
-                    >
-                      Present
-                    </button>
-                    <button
-                      onClick={() => handleAttendanceChange(subject, "lab", "Absent")}
-                      className={`w-20 py-2 rounded-lg text-white ${attendanceData[subject]?.lab === "Absent" ? "bg-red-500" : "bg-gray-300"}`}
-                    >
-                      Absent
-                    </button>
-                  </div>
-                </React.Fragment>
-              ))}
+    <div className="container mx-auto py-6">
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader className="space-y-1">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <CardTitle className="text-2xl font-bold">Daily Attendance</CardTitle>
+              <CardDescription className="flex items-center mt-1">
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                {getCurrentDay}, {date.toLocaleDateString()}
+              </CardDescription>
             </div>
           </div>
-        )}
+        </CardHeader>
 
-        {/* Save Attendance Button */}
-        <div className="flex justify-center">
-          <button
-            onClick={saveAttendance}
-            className="w-full py-3 bg-blue-500 text-white rounded-lg mt-6 font-semibold"
-          >
-            Save Attendance
-          </button>
-        </div>
-      </div>
+        <CardContent>
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="grid md:grid-cols-[280px,1fr] gap-6">
+            <div className="space-y-4">
+              <Calendar mode="single" selected={date} onSelect={setDate} className="rounded-md border" />
+            </div>
+
+            {!division || !batch ? (
+              <div className="flex items-center justify-center h-full">
+                <Alert>
+                  <AlertDescription className="text-center">
+                    Please set up your division and batch in your profile to view and mark attendance
+                  </AlertDescription>
+                </Alert>
+              </div>
+            ) : (
+              <Card>
+                <ScrollArea className="h-[500px] rounded-md">
+                  {timetable.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[200px]">Subject</TableHead>
+                          <TableHead>Theory</TableHead>
+                          <TableHead>Lab</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {timetable.map(({ subject, type }) => (
+                          <TableRow key={subject}>
+                            <TableCell className="font-medium">{subject}</TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                {["Present", "Absent"].map((value) => (
+                                  <Button
+                                    key={`theory-${value}`}
+                                    onClick={() => handleAttendanceChange(subject, "theory", value)}
+                                    size="sm"
+                                    variant={attendanceData[subject]?.theory === value ? "default" : "outline"}
+                                    className={cn(
+                                      "w-24",
+                                      attendanceData[subject]?.theory === value
+                                        ? value === "Present"
+                                          ? "bg-green-500 hover:bg-green-600"
+                                          : "bg-red-500 hover:bg-red-600"
+                                        : "",
+                                    )}
+                                    disabled={type !== "theory"}
+                                  >
+                                    {value}
+                                  </Button>
+                                ))}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                {["Present", "Absent"].map((value) => (
+                                  <Button
+                                    key={`lab-${value}`}
+                                    onClick={() => handleAttendanceChange(subject, "lab", value)}
+                                    size="sm"
+                                    variant={attendanceData[subject]?.lab === value ? "default" : "outline"}
+                                    className={cn(
+                                      "w-24",
+                                      attendanceData[subject]?.lab === value
+                                        ? value === "Present"
+                                          ? "bg-green-500 hover:bg-green-600"
+                                          : "bg-red-500 hover:bg-red-600"
+                                        : "",
+                                    )}
+                                    disabled={type !== "lab"}
+                                  >
+                                    {value}
+                                  </Button>
+                                ))}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="p-6">
+                      <Alert>
+                        <AlertDescription className="text-center">
+                          No subjects scheduled for {getCurrentDay}
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  )}
+                </ScrollArea>
+              </Card>
+            )}
+          </div>
+        </CardContent>
+        <Separator />
+        <CardFooter className="p-4">
+          <Button onClick={saveAttendance} disabled={isSaving || !division || !batch} className="w-full" size="lg">
+            {" "}
+            {/* Updated Button */}
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Attendance"
+            )}
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
-  );
+  )
 }
 
-export default AttendancePage;
+export default AttendancePage
+

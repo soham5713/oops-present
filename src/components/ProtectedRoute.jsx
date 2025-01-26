@@ -1,50 +1,63 @@
-import { Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { auth } from "../firebase";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { Navigate } from "react-router-dom"
+import { useEffect, useState } from "react"
+import { auth } from "../firebase"
+import { getFirestore, doc, getDoc } from "firebase/firestore"
+import { Loader2 } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 const ProtectedRoute = ({ element, redirectTo, checkSetup = false }) => {
-  const [isSetupCompleted, setIsSetupCompleted] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isSetupCompleted, setIsSetupCompleted] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const checkUserSetup = async () => {
-      const user = auth.currentUser;
-      if (user && checkSetup) {
-        const db = getFirestore();
-        const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
+      try {
+        const user = auth.currentUser
+        if (user && checkSetup) {
+          const db = getFirestore()
+          const docRef = doc(db, "users", user.uid)
+          const docSnap = await getDoc(docRef)
 
-        if (docSnap.exists() && docSnap.data().setupCompleted) {
-          setIsSetupCompleted(true);
-        } else {
-          setIsSetupCompleted(false);
+          setIsSetupCompleted(docSnap.exists() && docSnap.data().setupComplete)
         }
+      } catch (error) {
+        console.error("Error checking setup:", error)
+        setError(error.message)
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false);
-    };
-    checkUserSetup();
-  }, [checkSetup]);
+    }
 
-  const user = auth.currentUser;
+    checkUserSetup()
+  }, [checkSetup])
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    )
+  }
 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-t-4 border-blue-500"></div>
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
-    );
+    )
   }
 
-  if (!user) {
-    return <Navigate to={redirectTo} replace />;
-  }
+  const user = auth.currentUser
+
+  if (!user) return <Navigate to={redirectTo} replace />
 
   if (checkSetup && !isSetupCompleted) {
-    return <Navigate to="/subject-setup" replace />;
+    return <Navigate to="/subject-setup" replace />
   }
 
-  return element;
-};
+  return element
+}
 
-export default ProtectedRoute;
+export default ProtectedRoute
+

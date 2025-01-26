@@ -1,163 +1,121 @@
-import React, { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { signOut } from "../firebase"; // Import the sign-out function
+import React, { useState } from "react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
+import { Menu, X, BookOpen, Calendar, BarChart2, LogOut, Moon, Sun, User, Settings } from "lucide-react"
+import { useTheme } from "./ThemeProvider"
+import { signOut } from "firebase/auth"
+import { auth } from "../firebase"
+import { Button } from "@/components/ui/button"
 
 const Navbar = ({ user }) => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [isOpen, setIsOpen] = useState(false)
+  const { theme, toggleTheme } = useTheme()
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => location.pathname === path
 
   const handleSignOut = async () => {
     try {
-      await signOut(); // Sign the user out
-      navigate("/signin"); // Redirect to sign-in page after sign-out
+      await signOut(auth)
+      navigate("/signin")
     } catch (error) {
-      console.error("Error signing out:", error);
+      console.error("Error signing out:", error)
     }
-  };
+  }
+
+  const navLinks = [
+    { path: "/attendance", label: "Attendance", icon: <Calendar className="w-4 h-4" /> },
+    { path: "/dashboard", label: "Dashboard", icon: <BarChart2 className="w-4 h-4" /> },
+    { path: "/settings", label: "Settings", icon: <Settings className="w-4 h-4" /> },
+  ]
 
   return (
-    <nav className="bg-white shadow-md conents top-0 left-0 w-full z-20">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
+    <nav className="bg-card border-b border-border shadow-sm">
+      <div className="mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="text-2xl font-bold text-blue-600">
-              Attendance Tracker
+            <Link to="/" className="flex items-center space-x-2">
+              <Calendar className="w-6 h-6 text-primary" />
+              <span className="text-xl font-semibold text-foreground">Attendance</span>
             </Link>
           </div>
 
-          {/* Desktop Navigation Links */}
-          <div className="hidden md:flex items-center space-x-8">
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex md:items-center md:space-x-6">
+            {user &&
+              navLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive(link.path)
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  }`}
+                >
+                  {link.icon}
+                  <span>{link.label}</span>
+                </Link>
+              ))}
+            <Button onClick={toggleTheme} variant="ghost" size="sm" className="w-9 px-0">
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
             {user && (
-              <>
-                <Link
-                  to="/subject-setup"
-                  className={`font-medium transition-colors ${
-                    isActive("/subject-setup")
-                      ? "text-blue-600"
-                      : "text-gray-700 hover:text-blue-600"
-                  }`}
-                >
-                  Setup
-                </Link>
-                <Link
-                  to="/attendance"
-                  className={`font-medium transition-colors ${
-                    isActive("/attendance")
-                      ? "text-blue-600"
-                      : "text-gray-700 hover:text-blue-600"
-                  }`}
-                >
-                  Attendance
-                </Link>
-                <Link
-                  to="/dashboard"
-                  className={`font-medium transition-colors ${
-                    isActive("/dashboard")
-                      ? "text-blue-600"
-                      : "text-gray-700 hover:text-blue-600"
-                  }`}
-                >
-                  Dashboard
-                </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="font-medium text-gray-700 hover:text-red-600 transition-colors"
-                >
-                  Sign Out
-                </button>
-              </>
+              <button
+                onClick={handleSignOut}
+                className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </button>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <div className="md:hidden">
-            <button
-              className="text-gray-700 hover:text-blue-600 transition-colors focus:outline-none"
-              onClick={() => setMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              <svg
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d={
-                    isMobileMenuOpen
-                      ? "M6 18L18 6M6 6l12 12" // Close icon
-                      : "M4 6h16M4 12h16M4 18h16" // Hamburger icon
-                  }
-                />
-              </svg>
-            </button>
+          {/* Mobile menu button */}
+          <div className="md:hidden flex items-center space-x-2">
+            <Button onClick={() => setIsOpen(!isOpen)} variant="ghost" size="sm" className="md:hidden">
+              {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Navigation Links */}
-      <div
-        className={`md:hidden transition-all duration-300 ease-in-out overflow-hidden ${
-          isMobileMenuOpen ? "max-h-screen opacity-100" : "max-h-0 opacity-0"
-        }`}
-      >
-        <div className="flex flex-col items-center space-y-4 py-4 bg-white shadow-md">
+      {/* Mobile Navigation */}
+      <div className={`md:hidden ${isOpen ? "block" : "hidden"}`}>
+        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+          {user &&
+            navLinks.map((link) => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium ${
+                  isActive(link.path)
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                }`}
+                onClick={() => setIsOpen(false)}
+              >
+                {link.icon}
+                <span>{link.label}</span>
+              </Link>
+            ))}
           {user && (
-            <>
-              <Link
-                to="/subject-setup"
-                className={`font-medium transition-colors ${
-                  isActive("/subject-setup")
-                    ? "text-blue-600"
-                    : "text-gray-700 hover:text-blue-600"
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Setup
-              </Link>
-              <Link
-                to="/attendance"
-                className={`font-medium transition-colors ${
-                  isActive("/attendance")
-                    ? "text-blue-600"
-                    : "text-gray-700 hover:text-blue-600"
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Attendance
-              </Link>
-              <Link
-                to="/dashboard"
-                className={`font-medium transition-colors ${
-                  isActive("/dashboard")
-                    ? "text-blue-600"
-                    : "text-gray-700 hover:text-blue-600"
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Dashboard
-              </Link>
-              <button
-                onClick={() => {
-                  handleSignOut();
-                  setMobileMenuOpen(false);
-                }}
-                className="font-medium text-gray-700 hover:text-red-600 transition-colors"
-              >
-                Sign Out
-              </button>
-            </>
+            <button
+              onClick={() => {
+                handleSignOut()
+                setIsOpen(false)
+              }}
+              className="flex items-center space-x-2 w-full px-3 py-2 rounded-md text-base font-medium text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Sign Out</span>
+            </button>
           )}
         </div>
       </div>
     </nav>
-  );
-};
+  )
+}
 
-export default Navbar;
+export default Navbar
+
