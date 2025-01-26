@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { auth, db } from "../firebase"
 import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
@@ -128,8 +128,6 @@ function AttendancePage() {
 
       setSuccess("Attendance saved successfully!")
 
-      window.dispatchEvent(new CustomEvent("attendanceUpdated", { detail: { date: dateStr } }))
-
       setTimeout(() => {
         navigate("/dashboard")
       }, 1500)
@@ -140,11 +138,9 @@ function AttendancePage() {
     }
   }
 
-  useEffect(() => {}, []) //removed attendanceData dependency
-
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex justify-center items-center min-h-[calc(100vh-4rem)]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
@@ -180,7 +176,12 @@ function AttendancePage() {
 
           <div className="grid sm:grid-cols-[280px,1fr] gap-6">
             <div className="space-y-4">
-              <Calendar mode="single" selected={date} onSelect={setDate} className="rounded-md border" />
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                className="rounded-md border w-full"
+              />
             </div>
 
             {!division || !batch ? (
@@ -290,4 +291,3 @@ function AttendancePage() {
 }
 
 export default AttendancePage
- 

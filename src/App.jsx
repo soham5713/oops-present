@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
 import { auth } from "./firebase"
 import { onAuthStateChanged } from "firebase/auth"
@@ -7,7 +7,7 @@ import SignIn from "./pages/SignIn"
 import Attendance from "./pages/Attendance"
 import Dashboard from "./pages/Dashboard"
 import Navbar from "./components/Navbar"
-import ThemeProvider from "./components/ThemeProvider"
+import { ThemeProvider } from "./components/ThemeProvider"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Settings from "./pages/Settings"
 import SubjectSetup from "./pages/SubjectSetup"
@@ -37,7 +37,7 @@ function App() {
 
   if (isLoading) {
     return (
-      <ThemeProvider>
+      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <div className="flex justify-center items-center min-h-screen bg-background">
           <Card>
             <CardContent className="flex flex-col items-center justify-center p-6">
@@ -52,7 +52,7 @@ function App() {
 
   return (
     <Router>
-      <ThemeProvider>
+      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <div className="min-h-screen flex flex-col bg-background">
           <Navbar user={user} />
           <main className="flex-1 container mx-auto px-4 py-8 md:px-6 lg:px-8">

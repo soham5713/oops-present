@@ -1,40 +1,41 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from "react"
 
-const ThemeContext = createContext();
+const ThemeProviderContext = createContext()
 
-export function useTheme() {
-  return useContext(ThemeContext);
-}
-
-const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState(() => {
-    // Try to get theme from local storage, default to 'dark'
-    const savedTheme = localStorage.getItem('app-theme');
-    return savedTheme || 'dark';
-  });
+export function ThemeProvider({ children, defaultTheme = "system", storageKey = "vite-ui-theme" }) {
+  const [theme, setTheme] = useState(() => localStorage.getItem(storageKey) || defaultTheme)
 
   useEffect(() => {
-    const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(theme);
-    
-    // Save theme to local storage
-    localStorage.setItem('app-theme', theme);
-  }, [theme]);
+    const root = window.document.documentElement
 
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  };
+    root.classList.remove("light", "dark")
 
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      <div className="min-h-screen bg-background text-foreground transition-colors duration-200">
-        <div className="mx-auto">
-          {children}
-        </div>
-      </div>
-    </ThemeContext.Provider>
-  );
-};
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
 
-export default ThemeProvider;
+      root.classList.add(systemTheme)
+      return
+    }
+
+    root.classList.add(theme)
+  }, [theme])
+
+  const value = {
+    theme,
+    setTheme: (theme) => {
+      localStorage.setItem(storageKey, theme)
+      setTheme(theme)
+    },
+  }
+
+  return <ThemeProviderContext.Provider value={value}>{children}</ThemeProviderContext.Provider>
+}
+
+export const useTheme = () => {
+  const context = useContext(ThemeProviderContext)
+
+  if (context === undefined) throw new Error("useTheme must be used within a ThemeProvider")
+
+  return context
+}
+

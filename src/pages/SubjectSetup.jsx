@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { auth } from "../firebase"
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore"
@@ -16,9 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-import { Timetable, getBatches } from "../config/timetable"
-
-const DIVISIONS = ["A", "B", "C", "D", "E", "F", "G", "H"]
+import { Divisions, getBatches } from "../config/timetable"
 
 function SubjectSetup() {
   const [division, setDivision] = useState("")
@@ -150,7 +148,7 @@ function SubjectSetup() {
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
       <Card className="max-w-2xl mx-auto">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Subject Setup</CardTitle>
@@ -181,7 +179,7 @@ function SubjectSetup() {
                   <SelectValue placeholder="Select Division" />
                 </SelectTrigger>
                 <SelectContent>
-                  {DIVISIONS.map((div) => (
+                  {Divisions.map((div) => (
                     <SelectItem key={div} value={div}>
                       Division {div}
                     </SelectItem>

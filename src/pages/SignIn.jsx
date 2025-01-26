@@ -87,7 +87,7 @@ function SignIn() {
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
             Don't have an account?{" "}
-            <a href="/signup" className="text-primary font-semibold hover:underline">
+            <a href="/signin" className="text-primary font-semibold hover:underline">
               Sign Up
             </a>
           </p>
