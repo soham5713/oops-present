@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react"
-import { auth } from "../firebase"
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore"
+import { auth, db } from "../firebase"
+import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Loader2, CalendarIcon } from "lucide-react"
+import { Loader2, CalendarIcon } from 'lucide-react'
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
@@ -21,7 +21,8 @@ function AttendancePage() {
   const [batch, setBatch] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
-  const [isSaving, setIsSaving] = useState(false) // Added isSaving state
+  const [isSaving, setIsSaving] = useState(false)
+  const [success, setSuccess] = useState("")
   const navigate = useNavigate()
 
   const getCurrentDay = useMemo(() => {
@@ -41,32 +42,41 @@ function AttendancePage() {
           return
         }
 
-        const db = getFirestore()
         const userRef = doc(db, "users", user.uid)
-        const userDoc = await getDoc(userRef)
 
-        if (userDoc.exists()) {
-          const userData = userDoc.data()
-          setDivision(userData.division || "")
-          setBatch(userData.batch || "")
+        const unsubscribe = onSnapshot(
+          userRef,
+          (docSnap) => {
+            if (docSnap.exists()) {
+              const userData = docSnap.data()
+              setDivision(userData.division || "")
+              setBatch(userData.batch || "")
 
-          const dateStr = date.toISOString().split("T")[0]
-          const storedAttendance = userData.attendance?.[dateStr] || {}
+              const dateStr = date.toISOString().split("T")[0]
+              const storedAttendance = userData.attendance?.[dateStr] || {}
 
-          const initialAttendanceData = {}
-          timetable.forEach(({ subject, type }) => {
-            initialAttendanceData[subject] = {
-              ...initialAttendanceData[subject],
-              [type]: storedAttendance[subject]?.[type] || "",
+              const initialAttendanceData = {}
+              timetable.forEach(({ subject, type }) => {
+                initialAttendanceData[subject] = {
+                  ...initialAttendanceData[subject],
+                  [type]: storedAttendance[subject]?.[type] || "",
+                }
+              })
+              setAttendanceData(initialAttendanceData)
+            } else {
+              setError("User data not found. Please set up your profile.")
             }
-          })
+            setIsLoading(false)
+          },
+          (err) => {
+            setError("Failed to load user data. Please try again later.")
+            setIsLoading(false)
+          },
+        )
 
-          setAttendanceData(initialAttendanceData)
-        }
+        return () => unsubscribe()
       } catch (error) {
-        console.error("Error:", error)
         setError(error.message || "Failed to load attendance data")
-      } finally {
         setIsLoading(false)
       }
     }
@@ -85,7 +95,6 @@ function AttendancePage() {
   }
 
   const saveAttendance = async () => {
-    // Updated saveAttendance function
     if (!division || !batch) {
       setError("Please select your division and batch first")
       return
@@ -96,11 +105,10 @@ function AttendancePage() {
       const user = auth.currentUser
       if (!user) throw new Error("User not authenticated")
 
-      const db = getFirestore()
-      const docRef = doc(db, "users", user.uid)
+      const userRef = doc(db, "users", user.uid)
       const dateStr = date.toISOString().split("T")[0]
 
-      const docSnap = await getDoc(docRef)
+      const docSnap = await getDoc(userRef)
       if (!docSnap.exists()) throw new Error("User document not found")
 
       const userData = docSnap.data()
@@ -110,7 +118,7 @@ function AttendancePage() {
       }
 
       await setDoc(
-        docRef,
+        userRef,
         {
           attendance: updatedAttendance,
           lastUpdated: new Date().toISOString(),
@@ -118,14 +126,21 @@ function AttendancePage() {
         { merge: true },
       )
 
-      navigate("/dashboard")
+      setSuccess("Attendance saved successfully!")
+
+      window.dispatchEvent(new CustomEvent("attendanceUpdated", { detail: { date: dateStr } }))
+
+      setTimeout(() => {
+        navigate("/dashboard")
+      }, 1500)
     } catch (error) {
-      console.error("Error saving attendance:", error)
       setError("Failed to save attendance. Please try again.")
     } finally {
       setIsSaving(false)
     }
   }
+
+  useEffect(() => {}, []) //removed attendanceData dependency
 
   if (isLoading) {
     return (
@@ -136,10 +151,10 @@ function AttendancePage() {
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
       <Card className="max-w-4xl mx-auto">
         <CardHeader className="space-y-1">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <CardTitle className="text-2xl font-bold">Daily Attendance</CardTitle>
               <CardDescription className="flex items-center mt-1">
@@ -151,6 +166,11 @@ function AttendancePage() {
         </CardHeader>
 
         <CardContent>
+          {success && (
+            <Alert className="mb-6">
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          )}
           {error && (
             <Alert variant="destructive" className="mb-6">
               <AlertTitle>Error</AlertTitle>
@@ -158,7 +178,7 @@ function AttendancePage() {
             </Alert>
           )}
 
-          <div className="grid md:grid-cols-[280px,1fr] gap-6">
+          <div className="grid sm:grid-cols-[280px,1fr] gap-6">
             <div className="space-y-4">
               <Calendar mode="single" selected={date} onSelect={setDate} className="rounded-md border" />
             </div>
@@ -178,17 +198,17 @@ function AttendancePage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[200px]">Subject</TableHead>
-                          <TableHead>Theory</TableHead>
-                          <TableHead>Lab</TableHead>
+                          <TableHead className="w-[200px] text-center">Subject</TableHead>
+                          <TableHead className="text-center">Theory</TableHead>
+                          <TableHead className="text-center">Lab</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {timetable.map(({ subject, type }) => (
                           <TableRow key={subject}>
-                            <TableCell className="font-medium">{subject}</TableCell>
+                            <TableCell className="font-medium text-center">{subject}</TableCell>
                             <TableCell>
-                              <div className="flex gap-2">
+                              <div className="flex flex-wrap gap-2 items-center justify-center">
                                 {["Present", "Absent"].map((value) => (
                                   <Button
                                     key={`theory-${value}`}
@@ -196,11 +216,11 @@ function AttendancePage() {
                                     size="sm"
                                     variant={attendanceData[subject]?.theory === value ? "default" : "outline"}
                                     className={cn(
-                                      "w-24",
+                                      "w-full sm:w-24",
                                       attendanceData[subject]?.theory === value
                                         ? value === "Present"
-                                          ? "bg-green-500 hover:bg-green-600"
-                                          : "bg-red-500 hover:bg-red-600"
+                                          ? "bg-primary text-primary-foreground"
+                                          : "bg-destructive text-destructive-foreground"
                                         : "",
                                     )}
                                     disabled={type !== "theory"}
@@ -211,7 +231,7 @@ function AttendancePage() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <div className="flex gap-2">
+                              <div className="flex flex-wrap gap-2 items-center justify-center">
                                 {["Present", "Absent"].map((value) => (
                                   <Button
                                     key={`lab-${value}`}
@@ -219,11 +239,11 @@ function AttendancePage() {
                                     size="sm"
                                     variant={attendanceData[subject]?.lab === value ? "default" : "outline"}
                                     className={cn(
-                                      "w-24",
+                                      "w-full sm:w-24",
                                       attendanceData[subject]?.lab === value
                                         ? value === "Present"
-                                          ? "bg-green-500 hover:bg-green-600"
-                                          : "bg-red-500 hover:bg-red-600"
+                                          ? "bg-primary text-primary-foreground"
+                                          : "bg-destructive text-destructive-foreground"
                                         : "",
                                     )}
                                     disabled={type !== "lab"}
@@ -254,8 +274,6 @@ function AttendancePage() {
         <Separator />
         <CardFooter className="p-4">
           <Button onClick={saveAttendance} disabled={isSaving || !division || !batch} className="w-full" size="lg">
-            {" "}
-            {/* Updated Button */}
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -272,4 +290,4 @@ function AttendancePage() {
 }
 
 export default AttendancePage
-
+ 

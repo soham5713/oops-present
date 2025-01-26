@@ -87,7 +87,7 @@ function Settings() {
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
       <Card className="max-w-2xl mx-auto">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold">Settings</CardTitle>
