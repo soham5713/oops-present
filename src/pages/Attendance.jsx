@@ -1,6 +1,8 @@
-import { useState, useEffect, useMemo } from "react"
+"use client"
+
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { auth, db } from "../firebase"
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore"
+import { doc, getDoc, setDoc } from "firebase/firestore"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,16 +12,20 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Loader2, CalendarIcon, CheckCircle, XCircle } from "lucide-react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 
-import { getDivisionTimetable } from "../config/timetable"
+import { getDaySubjects } from "../config/timetable"
 
 function AttendancePage() {
-  const [attendanceData, setAttendanceData] = useState({})
+  const [allAttendanceData, setAllAttendanceData] = useState({})
+  const [currentDateAttendance, setCurrentDateAttendance] = useState({})
   const [date, setDate] = useState(new Date())
   const [division, setDivision] = useState("")
   const [batch, setBatch] = useState("")
+  const [userName, setUserName] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
   const [isSaving, setIsSaving] = useState(false)
@@ -31,68 +37,88 @@ function AttendancePage() {
   }, [date])
 
   const timetable = useMemo(() => {
-    return division && batch ? getDivisionTimetable(division, batch, getCurrentDay) : []
+    return division && batch ? getDaySubjects(division, batch, getCurrentDay) : []
   }, [division, batch, getCurrentDay])
 
-  useEffect(() => {
-    const fetchUserData = async () => {
+  const loadAttendanceData = useCallback(
+    async (user) => {
+      setIsLoading(true)
       try {
-        const user = auth.currentUser
-        if (!user) {
-          navigate("/signin")
-          return
-        }
-
         const userRef = doc(db, "users", user.uid)
+        const docSnap = await getDoc(userRef)
 
-        const unsubscribe = onSnapshot(
-          userRef,
-          (docSnap) => {
-            if (docSnap.exists()) {
-              const userData = docSnap.data()
-              setDivision(userData.division || "")
-              setBatch(userData.batch || "")
+        if (docSnap.exists()) {
+          const userData = docSnap.data()
+          setDivision(userData.division || "")
+          setBatch(userData.batch || "")
+          setAllAttendanceData(userData.attendance || {})
+          setUserName(userData.name || "")
 
-              const dateStr = date.toISOString().split("T")[0]
-              const storedAttendance = userData.attendance?.[dateStr] || {}
+          const dateStr = format(date, "yyyy-MM-dd")
+          const storedAttendance = userData.attendance?.[dateStr] || {}
 
-              const initialAttendanceData = {}
-              timetable.forEach(({ subject, type }) => {
-                initialAttendanceData[subject] = {
-                  ...initialAttendanceData[subject],
-                  [type]: storedAttendance[subject]?.[type] || "",
-                }
-              })
-              setAttendanceData(initialAttendanceData)
-            } else {
-              setError("User data not found. Please set up your profile.")
+          const initialAttendanceData = {}
+          timetable.forEach(({ subject, type }) => {
+            initialAttendanceData[subject] = {
+              theory: type.includes("theory") ? storedAttendance[subject]?.theory || "" : "",
+              lab: type.includes("lab") ? storedAttendance[subject]?.lab || "" : "",
             }
-            setIsLoading(false)
-          },
-          (err) => {
-            setError("Failed to load user data. Please try again later.")
-            setIsLoading(false)
-          },
-        )
-
-        return () => unsubscribe()
+          })
+          setCurrentDateAttendance(initialAttendanceData)
+        } else {
+          setError("User data not found. Please set up your profile.")
+        }
       } catch (error) {
-        setError(error.message || "Failed to load attendance data")
+        console.error("Error loading attendance data:", error)
+        setError("Failed to load attendance data. Please try again.")
+      } finally {
         setIsLoading(false)
       }
+    },
+    [date, timetable],
+  )
+
+  useEffect(() => {
+    const user = auth.currentUser
+    if (!user) {
+      navigate("/signin")
+      return
     }
 
-    fetchUserData()
-  }, [date, navigate, timetable])
+    loadAttendanceData(user)
+  }, [navigate, loadAttendanceData])
+
+  useEffect(() => {
+    if (allAttendanceData && Object.keys(allAttendanceData).length > 0) {
+      const dateStr = format(date, "yyyy-MM-dd")
+      const storedAttendance = allAttendanceData[dateStr] || {}
+
+      const initialAttendanceData = {}
+      timetable.forEach(({ subject, type }) => {
+        initialAttendanceData[subject] = {
+          theory: type.includes("theory") ? storedAttendance[subject]?.theory || "" : "",
+          lab: type.includes("lab") ? storedAttendance[subject]?.lab || "" : "",
+        }
+      })
+      setCurrentDateAttendance(initialAttendanceData)
+    }
+  }, [date, allAttendanceData, timetable])
 
   const handleAttendanceChange = (subject, type, value) => {
-    setAttendanceData((prev) => ({
-      ...prev,
-      [subject]: {
-        ...prev[subject],
-        [type]: value === prev[subject]?.[type] ? "" : value,
-      },
-    }))
+    setCurrentDateAttendance((prev) => {
+      const newData = { ...prev }
+      if (!newData[subject]) {
+        newData[subject] = {}
+      }
+      newData[subject][type] = value === newData[subject][type] ? "" : value
+
+      // Remove empty objects
+      if (Object.values(newData[subject]).every((v) => v === "")) {
+        delete newData[subject]
+      }
+
+      return newData
+    })
   }
 
   const saveAttendance = async () => {
@@ -102,40 +128,45 @@ function AttendancePage() {
     }
 
     setIsSaving(true)
+    setError("")
     try {
       const user = auth.currentUser
       if (!user) throw new Error("User not authenticated")
 
-      const userRef = doc(db, "users", user.uid)
-      const dateStr = date.toISOString().split("T")[0]
+      const dateStr = format(date, "yyyy-MM-dd")
 
-      const docSnap = await getDoc(userRef)
-      if (!docSnap.exists()) throw new Error("User document not found")
-
-      const userData = docSnap.data()
       const updatedAttendance = {
-        ...userData.attendance,
-        [dateStr]: attendanceData,
+        ...allAttendanceData,
+        [dateStr]: currentDateAttendance,
       }
 
       await setDoc(
-        userRef,
+        doc(db, "users", user.uid),
         {
           attendance: updatedAttendance,
+          name: userName,
           lastUpdated: new Date().toISOString(),
         },
         { merge: true },
       )
 
-      setSuccess("Attendance saved successfully!")
+      setAllAttendanceData(updatedAttendance)
+      setSuccess("Attendance and user name saved successfully!")
 
       setTimeout(() => {
         setSuccess("")
       }, 3000)
     } catch (error) {
-      setError("Failed to save attendance. Please try again.")
+      console.error("Error saving attendance:", error)
+      setError(`Failed to save attendance: ${error.message}. Please try again.`)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleDateChange = (newDate) => {
+    if (newDate) {
+      setDate(newDate)
     }
   }
 
@@ -175,12 +206,22 @@ function AttendancePage() {
             </Alert>
           )}
 
+          <div className="mb-6">
+            <Label htmlFor="userName">Your Name</Label>
+            <Input
+              id="userName"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              placeholder="Enter your name"
+            />
+          </div>
+
           <div className="grid sm:grid-cols-[280px,1fr] gap-6">
             <div className="space-y-4">
               <Calendar
                 mode="single"
                 selected={date}
-                onSelect={(newDate) => setDate(newDate || new Date())}
+                onSelect={handleDateChange}
                 className="rounded-md border w-full justify-center flex"
               />
             </div>
@@ -216,16 +257,16 @@ function AttendancePage() {
                                     key={`theory-${value}`}
                                     onClick={() => handleAttendanceChange(subject, "theory", value)}
                                     size="sm"
-                                    variant={attendanceData[subject]?.theory === value ? "default" : "outline"}
+                                    variant={currentDateAttendance[subject]?.theory === value ? "default" : "outline"}
                                     className={cn(
                                       "w-full sm:w-24",
-                                      attendanceData[subject]?.theory === value
+                                      currentDateAttendance[subject]?.theory === value
                                         ? value === "Present"
                                           ? "bg-green-500 hover:bg-green-600"
                                           : "bg-red-500 hover:bg-red-600"
                                         : "",
                                     )}
-                                    disabled={type !== "theory"}
+                                    disabled={!type.includes("theory")}
                                   >
                                     {value === "Present" ? (
                                       <CheckCircle className="w-4 h-4 mr-2" />
@@ -244,16 +285,16 @@ function AttendancePage() {
                                     key={`lab-${value}`}
                                     onClick={() => handleAttendanceChange(subject, "lab", value)}
                                     size="sm"
-                                    variant={attendanceData[subject]?.lab === value ? "default" : "outline"}
+                                    variant={currentDateAttendance[subject]?.lab === value ? "default" : "outline"}
                                     className={cn(
                                       "w-full sm:w-24",
-                                      attendanceData[subject]?.lab === value
+                                      currentDateAttendance[subject]?.lab === value
                                         ? value === "Present"
                                           ? "bg-green-500 hover:bg-green-600"
                                           : "bg-red-500 hover:bg-red-600"
                                         : "",
                                     )}
-                                    disabled={type !== "lab"}
+                                    disabled={!type.includes("lab")}
                                   >
                                     {value === "Present" ? (
                                       <CheckCircle className="w-4 h-4 mr-2" />
@@ -285,7 +326,13 @@ function AttendancePage() {
         </CardContent>
         <Separator />
         <CardFooter className="p-4">
-          <Button onClick={saveAttendance} disabled={isSaving || !division || !batch} className="w-full" size="lg">
+          <Button
+            onClick={saveAttendance}
+            disabled={isSaving || !division || !batch}
+            className="w-full"
+            size="lg"
+            aria-label="Save Attendance"
+          >
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

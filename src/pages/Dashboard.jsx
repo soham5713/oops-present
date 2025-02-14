@@ -1,3 +1,5 @@
+"use client"
+
 import { useState, useEffect, useCallback } from "react"
 import { auth, db } from "../firebase"
 import { doc, onSnapshot } from "firebase/firestore"
@@ -6,13 +8,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, FileDown } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { PDFDownloadLink } from "@react-pdf/renderer"
 import AttendanceReport from "../components/AttendanceReport"
 
-import { AllSubjects, hasSubject, getDivisionTimetable } from "../config/timetable"
+import { AllSubjects, hasSubject } from "../config/timetable"
 
 const AttendanceCard = ({ subject, theoryPercentage, labPercentage, theoryTotal, labTotal }) => (
   <Card>
@@ -99,25 +100,18 @@ const Dashboard = () => {
         monthlyStats[monthKey] = JSON.parse(JSON.stringify(semesterStats))
       }
 
-      Object.entries(dailyRecord).forEach(([subject, { theory, lab }]) => {
+      Object.entries(dailyRecord).forEach(([subject, record]) => {
         if (semesterStats[subject]) {
-          if (theory) {
-            semesterStats[subject].theory.total++
-            monthlyStats[monthKey][subject].theory.total++
-            if (theory === "Present") {
-              semesterStats[subject].theory.present++
-              monthlyStats[monthKey][subject].theory.present++
+          ;["theory", "lab"].forEach((type) => {
+            if (record[type]) {
+              semesterStats[subject][type].total++
+              monthlyStats[monthKey][subject][type].total++
+              if (record[type] === "Present") {
+                semesterStats[subject][type].present++
+                monthlyStats[monthKey][subject][type].present++
+              }
             }
-          }
-
-          if (lab) {
-            semesterStats[subject].lab.total++
-            monthlyStats[monthKey][subject].lab.total++
-            if (lab === "Present") {
-              semesterStats[subject].lab.present++
-              monthlyStats[monthKey][subject].lab.present++
-            }
-          }
+          })
         }
       })
     })
@@ -135,13 +129,15 @@ const Dashboard = () => {
       Object.entries(stats).forEach(([subject, data]) => {
         const theoryPercentage = calculatePercentage(data.theory.present, data.theory.total)
         const labPercentage = calculatePercentage(data.lab.present, data.lab.total)
-        defaulters[subject] = {
-          theory: theoryPercentage < 75,
-          lab: labPercentage < 100,
-          theoryPercentage,
-          labPercentage,
-          theoryTotal: data.theory.total,
-          labTotal: data.lab.total,
+        if (theoryPercentage < 75 || labPercentage < 100) {
+          defaulters[subject] = {
+            theory: theoryPercentage < 75,
+            lab: labPercentage < 100,
+            theoryPercentage,
+            labPercentage,
+            theoryTotal: data.theory.total,
+            labTotal: data.lab.total,
+          }
         }
       })
       return defaulters
@@ -284,12 +280,8 @@ const Dashboard = () => {
                           {Object.entries(defaulters).map(([subject, data]) => (
                             <TableRow key={subject}>
                               <TableCell className="text-center">{subject}</TableCell>
-                              <TableCell className="text-center">
-                                {data.theory ? "Defaulter" : "OK"}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {data.lab ? "Defaulter" : "OK"}
-                              </TableCell>
+                              <TableCell className="text-center">{data.theory ? "Defaulter" : "OK"}</TableCell>
+                              <TableCell className="text-center">{data.lab ? "Defaulter" : "OK"}</TableCell>
                               <TableCell className="text-center">{data.theoryTotal}</TableCell>
                               <TableCell className="text-center">{data.labTotal}</TableCell>
                             </TableRow>
